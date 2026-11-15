@@ -44,12 +44,17 @@ var _team: Team = null
 var _total_damage: float = 0
 var _tower_count_for_starting_roll: int = INITIAL_TOWER_ROLL_COUNT
 var _element_level_map: Dictionary = {}
+var _max_element_level_bonus: int = 0
+var _max_tower_level_bonus: int = 0
 var _food: int = 0
 var _food_cap: int = INITIAL_FOOD_CAP
 var _income_rate: float = 1.0
 var _interest_rate: float = 0.05
-var _gold: float = INITIAL_GOLD
-var _gold_farmed: float = 0
+# NOTE: gold is stored as centiunits (multiply by 100)
+# to preserve fractional values while avoiding float precision
+# issues in multiplayer. For example, 1.5 gold is stored as 150.
+var _gold_centi: int = INITIAL_GOLD * 100
+var _gold_farmed_centi: int = 0
 var _tomes: int = INITIAL_TOMES
 var _id: int = -1
 var _peer_id: int = -1
@@ -65,6 +70,9 @@ var _selected_unit: Unit = null
 var _autooil: AutoOil = AutoOil.new()
 var _player_name: String = "Player"
 var _chat_ignored: bool = false
+var _attack_range_bonus: float = 0.0
+var _tower_exp_bonus: float = 0.0
+var _is_dropped: bool = false
 
 @export var _item_stash: ItemContainer
 @export var _horadric_stash: ItemContainer
@@ -84,7 +92,7 @@ func _ready():
 	for element in Element.get_list():
 		_element_level_map[element] = 0
 
-	_gold += Config.cheat_gold()
+	_gold_centi += Config.cheat_gold() * 100
 	_tomes += Config.cheat_tomes()
 	_food_cap += Config.cheat_food_cap()
 	
@@ -97,6 +105,28 @@ func _ready():
 #########################
 ###       Public      ###
 #########################
+
+# NOTE: this attack range bonus will be applied to all
+# towers created by this player. There is a Wisdom Upgrade
+# which adds this bonus.
+func set_attack_range_bonus(value: float):
+	_attack_range_bonus = value
+
+
+func get_attack_range_bonus() -> float:
+	return _attack_range_bonus
+
+
+# NOTE: this exp bonus will be applied to all towers created
+# by this player. There is a Wisdom Upgrade which adds this
+# bonus.
+func set_tower_exp_bonus(value: float):
+	_tower_exp_bonus = value
+
+
+func get_tower_exp_bonus() -> float:
+	return _tower_exp_bonus
+
 
 func set_chat_ignored(value: bool):
 	_chat_ignored = value
@@ -159,6 +189,8 @@ func generate_waves():
 
 
 func start_wave(level: int):
+	if (_is_dropped):
+		return
 	_wave_spawner.start_wave(level)
 
 
@@ -182,7 +214,11 @@ func wave_is_in_progress() -> bool:
 
 
 func current_wave_is_finished() -> bool:
-	return _wave_spawner.current_wave_is_finished()
+	return _is_dropped || _wave_spawner.current_wave_is_finished()
+
+
+func wave_is_finished(level: int) -> bool:
+	return _is_dropped || _wave_spawner.wave_is_finished(level)
 
 
 func set_builder(builder_id: int):
@@ -243,6 +279,17 @@ func get_element_level(element: Element.enm) -> int:
 func get_element_level_map() -> Dictionary:
 	return _element_level_map
 
+func get_max_element_level_bonus() -> int:
+	return _max_element_level_bonus
+
+func get_max_element_level() -> int:
+	return Constants.MAX_ELEMENT_LEVEL_BASE + get_max_element_level_bonus()
+
+func get_max_tower_level_bonus() -> int:
+	return _max_tower_level_bonus
+
+func get_max_tower_level() -> int:
+	return min(Constants.TOWER_MAX_LEVEL_BASE + get_max_tower_level_bonus(), Constants.TOWER_MAX_LEVEL_WITH_BONUS)
 
 func get_research_cost(element: Element.enm) -> int:
 	var level: int = get_element_level(element)
@@ -266,7 +313,7 @@ func can_afford_research(element: Element.enm) -> bool:
 func is_able_to_research(element: Element.enm) -> bool:
 	var can_afford: bool = can_afford_research(element)
 	var current_level: int = get_element_level(element)
-	var reached_max_level: bool = current_level == Constants.MAX_ELEMENT_LEVEL
+	var reached_max_level: bool = current_level == get_max_element_level()
 	var is_able: bool = can_afford && !reached_max_level
 
 	return is_able
@@ -419,19 +466,24 @@ func give_gold(amount: float, unit: Unit, show_effect: bool, show_text: bool):
 func add_gold(amount: float, source_is_income: bool = false):
 #	NOTE: gold framed should include only gold gained from
 #	creep kills or item/tower effects
-	if !source_is_income:
-		_gold_farmed += amount
+#	NOTE: store gold as centiunits (multiply by 100) to
+#	preserve fractional values while using integer arithmetic
+#	for multiplayer determinism.
+	var amount_centi: int = roundi(amount * 100.0)
 
-	var new_total: float = _gold + amount
-	_set_gold(new_total)
+	if !source_is_income:
+		_gold_farmed_centi += amount_centi
+
+	var new_total_centi: int = _gold_centi + amount_centi
+	_set_gold_centi(new_total_centi)
 
 
 func get_gold() -> float:
-	return _gold
+	return _gold_centi / 100.0
 
 
 func get_gold_farmed() -> float:
-	return _gold_farmed
+	return _gold_farmed_centi / 100.0
 
 
 # NOTE: player.modifyIncomeRate in JASS
@@ -453,8 +505,12 @@ func enough_gold_for_tower(tower_id: int) -> bool:
 
 
 func spend_gold(amount: float):
-	var new_total: float = _gold - amount
-	_set_gold(new_total)
+#	NOTE: store gold as centiunits (multiply by 100) to
+#	preserve fractional values while using integer arithmetic
+#	for multiplayer determinism.
+	var amount_centi: int = roundi(amount * 100.0)
+	var new_total_centi: int = _gold_centi - amount_centi
+	_set_gold_centi(new_total_centi)
 
 
 func get_tomes() -> int:
@@ -614,7 +670,17 @@ func roll_starting_towers():
 	_tower_stash.add_towers(rolled_towers)
 	_add_message_about_rolled_towers(rolled_towers)
 	
-	_tower_count_for_starting_roll = max(0, _tower_count_for_starting_roll - 1)
+#	NOTE: the number of rerolls is limited in multiplayer so
+#	that players can compete fairly. In singleplayer, make
+#	the reroll amount unlimited because player can restart
+#	the game to reset rerolls anyway.
+# 
+#	[ORIGINAL_GAME_DEVIATION] In original game, the reroll
+#	count was limited even in singleplayer.
+	var player_mode: PlayerMode.enm = Globals.get_player_mode()
+	var is_multiplayer: bool = player_mode == PlayerMode.enm.MULTIPLAYER
+	if is_multiplayer:
+		_tower_count_for_starting_roll = max(0, _tower_count_for_starting_roll - 1)
 
 	var can_roll_again: bool = _tower_count_for_starting_roll > 0
 
@@ -634,8 +700,8 @@ func emit_game_lose_signal():
 ###      Private      ###
 #########################
 
-func _set_gold(value: float):
-	_gold = clampf(value, 0, MAX_GOLD)
+func _set_gold_centi(value_centi: int):
+	_gold_centi = clampi(value_centi, 0, MAX_GOLD * 100)
 
 
 func _set_tomes(value):
@@ -683,6 +749,10 @@ func _determine_player_name() -> String:
 
 	return player_name
 
+func drop():
+	_is_dropped = true
+	_team.remove_player(self)
+	_player_name = "<DISCONNECTED>"
 
 #########################
 ###     Callbacks     ###
@@ -691,7 +761,7 @@ func _determine_player_name() -> String:
 
 func _on_wave_spawner_wave_finished(level: int):
 	var upkeep: int = floori((20 + level * 2) * _income_rate)
-	var current_gold: int = floori(_gold)
+	var current_gold: int = _gold_centi / 100
 	var interest: int = floori(min(current_gold * _interest_rate, INTEREST_GAIN_MAX))
 	var income: int = upkeep + interest
 	var source_is_income: bool = true

@@ -43,7 +43,7 @@ func _update_player_list_in_lobby_menu():
 		var fallback_string: String = "Player %d" % peer_id
 		var player_name: String = _peer_id_to_player_name_map.get(peer_id, fallback_string)
 		player_list.append(player_name)
-	
+
 	_lan_lobby_menu.set_player_list(player_list)
 
 
@@ -61,7 +61,7 @@ func _give_local_player_name_to_host(player_name: String):
 @rpc("authority", "call_local", "reliable")
 func _receive_player_name_map_from_host(player_name_map: Dictionary):
 	_peer_id_to_player_name_map = player_name_map
-	
+
 #	NOTE: need to update displayed player list to show
 #	updated player names
 	_update_player_list_in_lobby_menu()
@@ -78,7 +78,7 @@ func _connect_to_lobby(address: String) -> bool:
 	var create_client_result: Error = peer.create_client(address, Constants.SERVER_PORT)
 
 	if create_client_result != OK:
-		Utils.show_popup_message(self, "Error", "Failed to create client. Details:" % error_string(create_client_result))
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_LAN_ERROR_FAILED_CLIENT").format({ERROR = error_string(create_client_result)}))
 
 		return false
 
@@ -153,11 +153,14 @@ func _on_peer_disconnected(_id: int):
 func _on_create_lan_match_menu_create_pressed():
 	_current_match_config = _create_lan_match_menu.get_match_config()
 
+	var team_mode: TeamMode.enm = _current_match_config.get_team_mode()
+	var player_count_max: int = TeamMode.get_player_count_max(team_mode)
+	var client_count_max: int = player_count_max - 1
+
 	var peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
-	# Maximum of 1 peer, since it's a 2-player co-op.
-	var create_server_result: Error = peer.create_server(Constants.SERVER_PORT, 1)
+	var create_server_result: Error = peer.create_server(Constants.SERVER_PORT, client_count_max)
 	if create_server_result != OK:
-		Utils.show_popup_message(self, "Error", "Failed to create server, port might already be in use. Details: %s." % error_string(create_server_result))
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_LAN_ERROR_FAILED_SERVER").format({ERROR = error_string(create_server_result)}))
 
 		return
 
@@ -184,26 +187,30 @@ func _on_lan_connect_menu_create_pressed():
 func _on_lan_lobby_menu_start_pressed():
 	var is_host: bool = multiplayer.is_server()
 	if !is_host:
-		Utils.show_popup_message(self, "Error", "Only the host can start the game.")
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_LAN_ERROR_ONLY_HOST_CAN_START"))
 		
 		return
-	
-	Globals._enet_peer_id_to_player_name = _peer_id_to_player_name_map
-	
+
 	var difficulty: Difficulty.enm = _current_match_config.get_difficulty()
 	var game_length: int = _current_match_config.get_game_length()
 	var game_mode: GameMode.enm = _current_match_config.get_game_mode()
 	var team_mode: TeamMode.enm = _current_match_config.get_team_mode()
 	var origin_seed: int = randi()
-	
-	_title_screen.start_game.rpc(PlayerMode.enm.MULTIPLAYER, game_length, game_mode, difficulty, team_mode, origin_seed, Globals.ConnectionType.ENET)
+
+#	NOTE: build the authoritative peer list on the host (peer
+#	1) and pass it to all clients.
+	var peer_id_list: Array = [1]
+	peer_id_list.append_array(multiplayer.get_peers())
+	peer_id_list.sort()
+
+	_title_screen.start_game.rpc(PlayerMode.enm.MULTIPLAYER, game_length, game_mode, difficulty, team_mode, origin_seed, Globals.ConnectionType.ENET, peer_id_list, _peer_id_to_player_name_map)
 
 
 func _on_lan_connect_menu_join_pressed():
 	var address: String = _lan_connect_menu.get_entered_address()
 	
 	if address.is_empty():
-		Utils.show_popup_message(self, "Error", "You must enter an address first.")
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_LAN_ERROR_MISSING_ADDRESS"))
 		
 		return
 	

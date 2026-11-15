@@ -60,7 +60,7 @@ const GHOST_ABILITY_TIMER_MAX: int = 20
 
 
 func load_triggers(triggers: BuffType):
-	triggers.add_event_on_level_up(on_level_up)
+	triggers.add_event_on_level_changed(on_level_changed)
 	triggers.add_event_on_damage(on_damage)
 
 
@@ -69,21 +69,21 @@ func tower_init():
 	
 	copter_slow_bt = BuffType.new("copter_slow_bt", 0.8, 0, false, self)
 	var copter_slow_bt_mod: Modifier = Modifier.new()
-	copter_slow_bt_mod.add_modification(Modification.Type.MOD_MOVESPEED, -0.1, -0.01)
+	copter_slow_bt_mod.add_modification(ModificationType.enm.MOD_MOVESPEED, -0.1, -0.01)
 	copter_slow_bt.set_buff_modifier(copter_slow_bt_mod)
 	copter_slow_bt.set_buff_icon("res://resources/icons/generic_icons/cog.tres")
 	copter_slow_bt.set_buff_tooltip(tr("OXHW"))
 
 	copter_armor_bt = BuffType.new("copter_armor_bt", 0.8, 0, false, self)
 	var copter_armor_bt_mod: Modifier = Modifier.new()
-	copter_armor_bt_mod.add_modification(Modification.Type.MOD_ARMOR_PERC, -0.3, -0.004)
+	copter_armor_bt_mod.add_modification(ModificationType.enm.MOD_ARMOR_PERC, -0.3, -0.004)
 	copter_armor_bt.set_buff_modifier(copter_armor_bt_mod)
 	copter_armor_bt.set_buff_icon("res://resources/icons/generic_icons/azul_flake.tres")
 	copter_armor_bt.set_buff_tooltip(tr("IH1N"))
 
 	copter_napalm_bt = BuffType.new("copter_napalm_bt", 5, 0, false, self)
 	var copter_napalm_bt_mod: Modifier = Modifier.new()
-	copter_napalm_bt_mod.add_modification(Modification.Type.MOD_MOVESPEED, -0.2, 0.0)
+	copter_napalm_bt_mod.add_modification(ModificationType.enm.MOD_MOVESPEED, -0.2, 0.0)
 	copter_napalm_bt.set_buff_modifier(copter_napalm_bt_mod)
 	copter_napalm_bt.set_buff_icon("res://resources/icons/generic_icons/mine_explosion.tres")
 	copter_napalm_bt.set_buff_tooltip(tr("BXNR"))
@@ -123,12 +123,16 @@ func on_create(_preceding: Tower):
 
 
 func on_destruct():
-	for copter in copter_map.values():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_copter_keys: Array = copter_map.keys()
+	sorted_copter_keys.sort()
+	for key in sorted_copter_keys:
+		var copter: Copter = copter_map[key]
 		var projectile: Projectile = copter.projectile
 		projectile.remove_from_game()
 
 
-func on_level_up(_event: Event):
+func on_level_changed(_event: Event):
 	level_up_copters()
 
 

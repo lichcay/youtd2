@@ -14,7 +14,7 @@ extends TowerBehavior
 
 var stun_bt: BuffType
 var acid_goo_bt: BuffType
-var last_time_when_used_tentacles: float = 0.0
+var last_tick_when_used_tentacles: int = 0
 var TARGET_TYPE_GROUND_ONLY: TargetType = TargetType.new(TargetType.CREEPS + TargetType.SIZE_MASS + TargetType.SIZE_NORMAL + TargetType.SIZE_CHAMPION + TargetType.SIZE_BOSS)
 
 
@@ -53,7 +53,7 @@ func tower_init():
 
 	acid_goo_bt = BuffType.new("acid_goo_bt", ACID_GOO_DURATION, ACID_GOO_DURATION_ADD, false, self)
 	var mod: Modifier = Modifier.new()
-	mod.add_modification(Modification.Type.MOD_ARMOR, -ACID_GOO_ARMOR, -ACID_GOO_ARMOR_ADD)
+	mod.add_modification(ModificationType.enm.MOD_ARMOR, -ACID_GOO_ARMOR, -ACID_GOO_ARMOR_ADD)
 	acid_goo_bt.set_buff_modifier(mod)
 	acid_goo_bt.set_buff_icon("res://resources/icons/generic_icons/open_wound.tres")
 	acid_goo_bt.set_buff_tooltip(tr("L7ND"))
@@ -64,7 +64,7 @@ func on_kill(event: Event):
 	var target_size: CreepSize.enm = target.get_size()
 
 	var mod_value: float = EAT_THE_DEAD_VALUES.get(target_size, 0)
-	tower.modify_property(Modification.Type.MOD_DAMAGE_BASE_PERC, mod_value)
+	tower.modify_property(ModificationType.enm.MOD_DAMAGE_BASE_PERC, mod_value)
 
 	var effect: int = Effect.create_simple_at_unit("res://src/effects/blood_splatter.tscn", target)
 	Effect.set_scale(effect, 2)
@@ -88,11 +88,14 @@ func on_damage(event: Event):
 # be also fired inside on_unit_in_range().
 func periodic(event: Event):
 	var tentacles_are_on_cd: bool = get_tentacles_are_on_cd()
-	
+
 	if tentacles_are_on_cd:
 		var tentacles_cd: float = get_tentacles_cd()
-		var time_for_next_tentacles: float = last_time_when_used_tentacles + tentacles_cd
-		var remaining_cd: float = time_for_next_tentacles - Utils.get_time()
+		var tentacles_cd_ticks: int = Utils.time_to_ticks(tentacles_cd)
+		var current_tick: int = Utils.get_current_tick()
+		var tick_for_next_tentacles: int = last_tick_when_used_tentacles + tentacles_cd_ticks
+		var remaining_cd_ticks: int = tick_for_next_tentacles - current_tick
+		var remaining_cd: float = Utils.ticks_to_time(remaining_cd_ticks)
 
 		event.enable_advanced(remaining_cd, false)
 	else:
@@ -148,7 +151,7 @@ func fire_tentacles():
 
 	var created_any_tentacles: bool = tentacle_count > 0
 	if created_any_tentacles:
-		last_time_when_used_tentacles = Utils.get_time()
+		last_tick_when_used_tentacles = Utils.get_current_tick()
 
 
 func get_tentacles_cd() -> float:
@@ -160,7 +163,9 @@ func get_tentacles_cd() -> float:
 
 func get_tentacles_are_on_cd() -> bool:
 	var tentacles_cd: float = get_tentacles_cd()
-	var time_since_last_tentacles: float = Utils.get_time() - last_time_when_used_tentacles
-	var tentacles_are_on_cd: bool = time_since_last_tentacles < tentacles_cd
+	var tentacles_cd_ticks: int = Utils.time_to_ticks(tentacles_cd)
+	var current_tick: int = Utils.get_current_tick()
+	var ticks_since_last_tentacles: int = current_tick - last_tick_when_used_tentacles
+	var tentacles_are_on_cd: bool = ticks_since_last_tentacles < tentacles_cd_ticks
 
 	return tentacles_are_on_cd

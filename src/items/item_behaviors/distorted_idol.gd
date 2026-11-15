@@ -5,9 +5,6 @@ var multiboard: MultiboardValues
 var copied_item_list: Array[Item] = []
 
 
-func load_modifier(modifier: Modifier):
-	modifier.add_modification(Modification.Type.MOD_ATTACKSPEED, -0.60, 0.0)
-
 func create_multiboard(size: int):
 	multiboard = MultiboardValues.new(size)
 	for i in range(size):
@@ -27,7 +24,8 @@ func on_pickup():
 #	immediately dropping after adding to inventory
 #	causes problems
 	if !carrier_is_on_corner:
-		player.display_floating_text("Distorted Idol carrier must be on corner!", carrier, Color.PURPLE)
+		var tower_must_be_on_corner_text: String = tr("E8DP")
+		player.display_floating_text(tower_must_be_on_corner_text, carrier, Color.PURPLE)
 
 		await Utils.create_manual_timer(0.1, self).timeout
 		

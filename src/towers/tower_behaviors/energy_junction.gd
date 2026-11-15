@@ -28,11 +28,15 @@ func junction_on_create(event: Event):
 	if tower != buffee:
 		var lightning: InterpolatedSprite = InterpolatedSprite.create_from_unit_to_unit(InterpolatedSprite.LIGHTNING, tower, buffee)
 		lightning.modulate = Color.LIGHT_BLUE
+
+		# NOTE: usage of get_instance_id() is OK here and
+		# doesn't cause desyncs because the lightning object
+		# is visual only.
 		b.user_int = lightning.get_instance_id()
 
 #	NOTE: add & save attack speed
 	b.user_real = tower.user_real + tower.user_real2 * tower.get_level()
-	buffee.modify_property(Modification.Type.MOD_ATTACKSPEED, b.user_real)
+	buffee.modify_property(ModificationType.enm.MOD_ATTACKSPEED, b.user_real)
 
 
 func junction_on_damage(event: Event):
@@ -52,11 +56,14 @@ func junction_on_cleanup(event: Event):
 	var b: Buff = event.get_buff()
 
 	if b.user_int != 0:
+		# NOTE: usage of instance_from_id() is OK here and
+		# doesn't cause desyncs because the lightning object
+		# is visual only.
 		var lightning: InterpolatedSprite = instance_from_id(b.user_int) as InterpolatedSprite
 		if lightning != null:
 			lightning.queue_free()
 
-	b.get_buffed_unit().modify_property(Modification.Type.MOD_ATTACKSPEED, -b.user_real)
+	b.get_buffed_unit().modify_property(ModificationType.enm.MOD_ATTACKSPEED, -b.user_real)
 
 
 func tower_init():

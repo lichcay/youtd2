@@ -144,7 +144,7 @@ func _ready():
 #		to new tower. This is to correctly handle items
 #		which grant experience while carried.
 		set_level(_temp_preceding_tower._level)
-		_experience = _temp_preceding_tower._experience
+		_experience_centi = _temp_preceding_tower._experience_centi
 
 #		Add items to new tower
 #		NOTE: for upgrade case, inventory will always be
@@ -161,33 +161,34 @@ func _ready():
 		_best_hit = _temp_preceding_tower._best_hit
 		_damage_dealt_total = _temp_preceding_tower._damage_dealt_total
 		_damage_dealt_to_wave_map = _temp_preceding_tower._damage_dealt_to_wave_map
+		_attack_damage_dealt = _temp_preceding_tower._attack_damage_dealt
+		_spell_damage_dealt = _temp_preceding_tower._spell_damage_dealt
+		_attack_damage_dealt_to_wave_map = _temp_preceding_tower._attack_damage_dealt_to_wave_map
+		_spell_damage_dealt_to_wave_map = _temp_preceding_tower._spell_damage_dealt_to_wave_map
 		
 #		Transition all buff groups from preceding tower
 		_buff_groups = _temp_preceding_tower._buff_groups.duplicate()
 	else:
-#		NOTE: only apply builder tower lvl bonus if tower is
+#		NOTE: only apply tower exp and lvl bonus if tower is
 #		"fresh". When tower is transformed or upgraded, it
-#		inherits level of preceding tower and this builder
-#		lvl bonus can't be applied.
-		var builder: Builder = get_player().get_builder()
-		var tower_lvl_bonus: int = builder.get_tower_lvl_bonus()
-
-		if tower_lvl_bonus > 0:
-			set_level(tower_lvl_bonus)
-			var experience_for_level: int = Experience.get_exp_for_level(tower_lvl_bonus)
-			_experience = experience_for_level
+#		inherits level of preceding tower
+#		and these bonuses can't be applied.
+		var exp_from_bonuses: float = _calculate_exp_from_bonuses()
+		var lvl_from_bonuses: int = Experience.get_level_at_exp(exp_from_bonuses, get_player())
+		set_level(lvl_from_bonuses)
+		_experience_centi = roundi(exp_from_bonuses * 100.0)
 
 	var wisdom_modifier: Modifier = get_player().get_wisdom_modifier()
 	add_modifier(wisdom_modifier)
 
 #	NOTE: some stats have an innate level-based modifier
 	var innate_modifier: Modifier = Modifier.new()
-	innate_modifier.add_modification(Modification.Type.MOD_ATK_CRIT_CHANCE, 0, Constants.INNATE_MOD_ATK_CRIT_CHANCE_LEVEL_ADD)
-	innate_modifier.add_modification(Modification.Type.MOD_ATK_CRIT_DAMAGE, 0, Constants.INNATE_MOD_ATK_CRIT_DAMAGE_LEVEL_ADD)
-	innate_modifier.add_modification(Modification.Type.MOD_SPELL_CRIT_DAMAGE, 0, Constants.INNATE_MOD_SPELL_CRIT_CHANCE_LEVEL_ADD)
-	innate_modifier.add_modification(Modification.Type.MOD_SPELL_CRIT_DAMAGE, 0, Constants.INNATE_MOD_SPELL_CRIT_DAMAGE_LEVEL_ADD)
-	innate_modifier.add_modification(Modification.Type.MOD_DAMAGE_BASE_PERC, 0, Constants.INNATE_MOD_DAMAGE_BASE_PERC_LEVEL_ADD)
-	innate_modifier.add_modification(Modification.Type.MOD_ATTACKSPEED, 0, Constants.INNATE_MOD_ATTACKSPEED_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_ATK_CRIT_CHANCE, 0, Constants.INNATE_MOD_ATK_CRIT_CHANCE_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_ATK_CRIT_DAMAGE, 0, Constants.INNATE_MOD_ATK_CRIT_DAMAGE_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_SPELL_CRIT_DAMAGE, 0, Constants.INNATE_MOD_SPELL_CRIT_CHANCE_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_SPELL_CRIT_DAMAGE, 0, Constants.INNATE_MOD_SPELL_CRIT_DAMAGE_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_DAMAGE_BASE_PERC, 0, Constants.INNATE_MOD_DAMAGE_BASE_PERC_LEVEL_ADD)
+	innate_modifier.add_modification(ModificationType.enm.MOD_ATTACKSPEED, 0, Constants.INNATE_MOD_ATTACKSPEED_LEVEL_ADD)
 	add_modifier(innate_modifier)
 
 	var tower_id: int = get_id()
@@ -360,21 +361,37 @@ func issue_target_order(target: Unit):
 ###      Private      ###
 #########################
 
-func _get_attack_ability_description() -> String:
-	var text: String = ""
+func _calculate_exp_from_bonuses() -> float:
+	var player = get_player()
+	var builder: Builder = player.get_builder()
 	
+	var tower_lvl_bonus: int = builder.get_tower_lvl_bonus()
+	var tower_exp_bonus: float = player.get_tower_exp_bonus()
+	
+	var current_lvl: int = Experience.get_level_at_exp(tower_exp_bonus, player)
+	var experience_for_current_level: int = Experience.get_exp_for_level(current_lvl)
+	var increased_lvl: int = min(current_lvl + tower_lvl_bonus, player.get_max_tower_level())
+	var experience_for_increased_level: int = Experience.get_exp_for_level(increased_lvl)
+	
+	var added_exp: float = float(experience_for_increased_level - experience_for_current_level)
+	
+	return tower_exp_bonus + added_exp
+
+
+func _get_attack_ability_description() -> String:
 	var tower_id: int = get_id()
 
-	var attack_range: int = floor(TowerProperties.get_range(tower_id))
+	var base_attack_range: int = floor(get_base_range())
+	var bonus_attack_range: int = floor(get_range() - base_attack_range)
 	var attack_type: AttackType.enm = TowerProperties.get_attack_type(tower_id)
 	var damage_dealt_string: String = AttackType.get_rich_text_for_damage_dealt(attack_type)
 	var attack_type_string: String = AttackType.convert_to_colored_string(attack_type)
-
-	text += "Attack type: %s.\n" % attack_type_string \
-	+ "Range: %s\n" % attack_range \
-	+ " \n" \
-	+ "Damage to:\n" \
-	+ "%s" % damage_dealt_string
+	
+	var attack_range_str: String = "%s" % base_attack_range
+	if bonus_attack_range != 0:
+		attack_range_str += " + %s" % bonus_attack_range
+	
+	var text: String = tr("TOWER_ATTACK_ABILITY_TEXT").format({ATTACK_TYPE = attack_type_string, RANGE = attack_range_str, DAMAGE_TO_TEXT = damage_dealt_string})
 
 	return text
 
@@ -391,9 +408,7 @@ func _do_damage_from_projectile(projectile: Projectile, target: Unit, damage: fl
 
 
 # NOTE: this f-n does some unnecessary work in some cases
-# but it's simpler this way. For example, it checks if
-# target is invisible even though the get_units_in_range()
-# f-n already filters out invisible creeps.
+# but it's simpler this way.
 # NOTE: arg needs to be untyped because it may be an invalid
 # instance.
 func _target_is_valid(target) -> bool:
@@ -411,13 +426,11 @@ func _target_is_valid(target) -> bool:
 	
 	var in_range = VectorUtils.in_range(get_position_wc3_2d(), target.get_position_wc3_2d(), attack_range)
 
-	var target_is_invisible: bool = target.is_invisible()
-
 	var target_is_immune: bool = target.is_immune()
 	var attack_type_is_arcane: bool = get_attack_type() == AttackType.enm.ARCANE
 	var target_is_immune_to_attack_type: bool = target_is_immune && attack_type_is_arcane
 
-	var target_is_valid: bool = in_range && !target_is_invisible && !target_is_immune_to_attack_type
+	var target_is_valid: bool = in_range && !target_is_immune_to_attack_type
 
 	return target_is_valid
 
@@ -613,8 +626,8 @@ func _update_target_list():
 	_is_in_combat = !creeps_in_range.is_empty()
 
 #	Remove targets that have become invalid. Targets can
-#	become invalid by moving out of range, becoming
-#	invisible
+#	become invalid for multiple reasons: moving out of
+#	range, dying and other.
 	var removed_target_list: Array = []
 
 	for target in _target_list:
@@ -928,8 +941,8 @@ func get_ability_button_data_list() -> Array[AbilityButton.Data]:
 	if attack_enabled:
 		var attack_ability: AbilityButton.Data = AbilityButton.Data.new()
 		var attack_description: String = _get_attack_ability_description()
-		attack_ability.name_english = Constants.TOWER_ATTACK_ABILITY_NAME
-		attack_ability.ability_name = Constants.TOWER_ATTACK_ABILITY_NAME
+		attack_ability.name_english = Constants.TOWER_ATTACK_ABILITY_NAME_ENGLISH
+		attack_ability.ability_name = tr("TOWER_ATTACK_ABILITY_TITLE")
 		attack_ability.icon = "res://resources/icons/rockets/rocket_01.tres"
 		attack_ability.description_long = attack_description
 		list.append(attack_ability)
@@ -937,14 +950,14 @@ func get_ability_button_data_list() -> Array[AbilityButton.Data]:
 	var specials_description: String = RichTexts.get_tower_specials_text(tower_id)
 	if !specials_description.is_empty():
 		var specials: AbilityButton.Data = AbilityButton.Data.new()
-		specials.ability_name = "Specials"
+		specials.ability_name = tr("TOWER_SPECIALS_TITLE")
 		specials.icon = "res://resources/icons/rockets/rocket_04.tres"
 		specials.description_long = specials_description
 		list.append(specials)
 
 	if _attack_style == AttackStyle.SPLASH:
 		var splash_attack: AbilityButton.Data = AbilityButton.Data.new()
-		splash_attack.ability_name = "Splash Attack"
+		splash_attack.ability_name = tr("TOWER_SPLASH_ATTACK_TITLE")
 		splash_attack.icon = "res://resources/icons/rockets/rocket_05.tres"
 		var splash_attack_text: String = RichTexts.get_tower_splash_attack_text(tower_id)
 		splash_attack.description_long = splash_attack_text
@@ -952,7 +965,7 @@ func get_ability_button_data_list() -> Array[AbilityButton.Data]:
 
 	if _attack_style == AttackStyle.BOUNCE:
 		var bounce_attack: AbilityButton.Data = AbilityButton.Data.new()
-		bounce_attack.ability_name = "Bounce Attack"
+		bounce_attack.ability_name = tr("TOWER_BOUNCE_ATTACK_TITLE")
 		bounce_attack.icon = "res://resources/icons/daggers/dagger_09.tres"
 		var bounce_attack_text: String = RichTexts.get_tower_bounce_attack_text(tower_id)
 		bounce_attack.description_long = bounce_attack_text
@@ -963,7 +976,7 @@ func get_ability_button_data_list() -> Array[AbilityButton.Data]:
 #	not displayed in tower info.
 	if _target_count_from_tower > 1:
 		var multishot: AbilityButton.Data = AbilityButton.Data.new()
-		multishot.ability_name = "Multishot"
+		multishot.ability_name = tr("TOWER_MULTISHOT_TITLE")
 		multishot.icon = "res://resources/icons/spears/many_spears_01.tres"
 		var multishot_tooltip: String = RichTexts.get_tower_multishot_text(tower_id)
 		multishot.description_long = multishot_tooltip
@@ -1110,25 +1123,35 @@ func get_overall_dps() -> float:
 # How much damage the tower deals with its attack per second on average when 
 # counting attack crits and multicrits.
 func get_dps_with_crit() -> float:
-	var crit_multiplier: float = 1.0
-	var current_crit_chance: float = get_prop_atk_crit_chance()
-	var crit_damage: float = get_prop_atk_crit_damage() - 1.0
-	var multicrit_current: int = get_prop_multicrit_count()
-	var current_dmg_multiplier: float = 1.0
+	# Extra crit damage per successful crit:
+	# if crit_damage = 1.5x, then extra = 0.5
+	var extra_per_crit: float = get_prop_atk_crit_damage() - 1.0
+	
+	# Loop parameters
+	var remaining_multicrits: int = get_prop_multicrit_count()      # M
+	var current_crit_chance: float = get_prop_atk_crit_chance()     # initial p_1
 
-	while multicrit_current > 0:
-		if current_crit_chance > Constants.ATK_MULTICRIT_DIMISHING:
-			current_dmg_multiplier *= Constants.ATK_MULTICRIT_DIMISHING
-		else:
-			current_dmg_multiplier *= current_crit_chance
+	# Probability that the chain survives to stage k (P[crits ≥ k])
+	var chain_prob_at_least_k: float = 1.0
 
-		crit_multiplier += crit_damage * current_dmg_multiplier
+	# Expected crit multiplier:
+	# E[multiplier] = 1 + extra * Σ_{k=1..M} P(crits ≥ k)
+	var expected_crit_multiplier: float = 1.0
+
+	while remaining_multicrits > 0:
+		# Compute effective crit probability for this stage, clamped to cap
+		# and update chain -> probability of reaching at least this stage
+		chain_prob_at_least_k *= clampf(current_crit_chance, 0.0, Constants.ATK_CRIT_CHANCE_CAP)
+
+		# Add contribution of this stage
+		expected_crit_multiplier += extra_per_crit * chain_prob_at_least_k
+
+		# Prepare for next stage: diminish chance
 		current_crit_chance *= Constants.ATK_MULTICRIT_DIMISHING
-
-		multicrit_current -= 1
+		remaining_multicrits -= 1
 
 	var dps: float = get_overall_dps()
-	var dps_with_crit: float = dps * crit_multiplier
+	var dps_with_crit: float = dps * expected_crit_multiplier
 	
 	return dps_with_crit
 
@@ -1137,16 +1160,29 @@ func get_dps_with_crit() -> float:
 # NOTE: getOverallDamage() in JASS, renamed to avoid confusion
 func get_total_damage() -> float:
 	return _damage_dealt_total
+	
+func get_total_damage_by_type(damage_source: DamageSource = DamageSource.Attack) -> float:
+	if damage_source == DamageSource.Attack:
+		return _attack_damage_dealt
+	if damage_source == DamageSource.Spell:
+		return _spell_damage_dealt
+	return 0.0
 
-# How much damage the tower dealt in total, during last 5 min
-func get_total_damage_recent() -> float:
+# How much damage the tower dealt in total, during last 5 waves
+func get_total_damage_recent(use_damage_source: bool = false, damage_source: DamageSource = DamageSource.Attack) -> float:
 	var total_damage_recent: float = 0
 	
 	var team: Team = _player.get_team()
 	var current_wave_level: int = team.get_level()
 	
+	var damage_dealt_to_wave_map: Dictionary = _damage_dealt_to_wave_map
+	if use_damage_source and damage_source == DamageSource.Attack:
+		damage_dealt_to_wave_map = _attack_damage_dealt_to_wave_map
+	if use_damage_source and damage_source == DamageSource.Spell:
+		damage_dealt_to_wave_map = _spell_damage_dealt_to_wave_map
+		
 	for i in range(current_wave_level, current_wave_level - 5, -1):
-		var damage_to_wave: float = _damage_dealt_to_wave_map.get(i, 0)
+		var damage_to_wave: float = damage_dealt_to_wave_map.get(i, 0)
 		total_damage_recent += damage_to_wave
 	
 	return total_damage_recent
@@ -1159,12 +1195,17 @@ func get_kills() -> int:
 func get_best_hit() -> float:
 	return _best_hit
 
+func get_base_range() -> float:
+	return TowerProperties.get_range(_id)
+
 # NOTE: tower.getRange() in JASS
 func get_range() -> float:
-	var original_range: float = TowerProperties.get_range(_id)
-	var builder: Builder = get_player().get_builder()
+	var original_range: float = get_base_range()
+	var player: Player = get_player()
+	var builder: Builder = player.get_builder()
 	var builder_range_bonus: float = builder.get_range_bonus()
-	var total_range: float = original_range + builder_range_bonus
+	var attack_range_bonus: float = player.get_attack_range_bonus()
+	var total_range: float = original_range + builder_range_bonus + attack_range_bonus
 
 	return total_range
 

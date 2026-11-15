@@ -79,6 +79,14 @@ func add_player(player: Player):
 	player.wave_spawned.connect(_on_player_wave_spawned)
 	player.wave_finished.connect(_on_player_wave_finished)
 
+func remove_player(player: Player):
+	var found_player_index = -1
+	for i in _player_list.size():
+		if _player_list[i].get_id() == player.get_id():
+			found_player_index = i
+
+	if (found_player_index != -1):
+		_player_list.remove_at(found_player_index)
 
 func get_id() -> int:
 	return _id
@@ -249,14 +257,14 @@ func _do_game_win():
 
 	for i in range(10):
 		var effect_count: int = 100 + i * 20
-		effect_count = ceili(randf_range(0.5, 1.0) * effect_count)
-		
+		effect_count = ceili(Globals.synced_rng.randf_range(0.5, 1.0) * effect_count)
+
 		for j in range(effect_count):
 			var x: float = Globals.synced_rng.randf_range(-4000, 4000)
 			var y: float = Globals.synced_rng.randf_range(-4000, 4000)
 			var scale: float = Globals.synced_rng.randf_range(1.0, 2.0)
 			var speed: float = Globals.synced_rng.randf_range(0.7, 1.0)
-			var color: Color = COLOR_LIST.pick_random()
+			var color: Color = Utils.pick_random(Globals.synced_rng, COLOR_LIST)
 
 			var effect: int = Effect.create_simple("res://src/effects/placeholder.tscn", Vector2(x, y))
 			Effect.set_scale(effect, scale)
@@ -374,33 +382,29 @@ func _on_player_wave_finished(level: int):
 	if _finished_the_game:
 		return
 
-#	NOTE: need to check that *current* level was finished
-#	because waves can be finished out of order if they are
-#	force spawned by player. If player finished not-current
-#	level, then we don't need to do any reactions.
-	var current_level: int = get_level()
-	var finished_current_level: bool = level == current_level
-	
-	if !finished_current_level:
-		return
-
 	var all_players_finished: bool = true
 	for player in _player_list:
-		if !player.current_wave_is_finished():
+		if !player.wave_is_finished(level):
 			all_players_finished = false
-	
+
 	var player_finished_last_level: bool = level == Utils.get_max_level()
 	var team_achieved_victory: bool = player_finished_last_level && all_players_finished
 
 	if team_achieved_victory:
 		_do_game_win()
 
+	var current_level: int = get_level()
+	var finished_current_level: bool = level == current_level
 	var game_is_neverending: bool = Globals.game_is_neverending()
 	var need_to_start_next_wave_timer: bool = !player_finished_last_level || game_is_neverending
 	var can_start_next_wave_timer: bool = all_players_finished
-	if need_to_start_next_wave_timer && can_start_next_wave_timer:
-		_start_timer_before_next_wave(Constants.TIME_BETWEEN_WAVES)
 
+#	NOTE: need to check that *current* level was finished
+#	because waves can be finished out of order if they are
+#	force spawned by player. If player finished not-current
+#	level, then we shouldn't start next wave timer.
+	if finished_current_level && need_to_start_next_wave_timer && can_start_next_wave_timer:
+		_start_timer_before_next_wave(Constants.TIME_BETWEEN_WAVES)
 
 #########################
 ###       Static      ###

@@ -15,14 +15,6 @@ const FLY_DURATION: float = 1.0
 const PRINT_SCRIPT_NOT_FOUND_ERROR: bool = false
 const FRESHNESS_DURATION: float = 7.0
 
-# NOTE: this is used in creep.gd to determine which items
-# will not drop.
-
-# NOTE: Nermind's Eye(220) and Eye of True Sight(221) are
-# disabled because invisible waves are disabled.
-static var disabled_item_list: Array[int] = [220, 221]
-
-
 var user_int: int = 0
 var user_int2: int = 0
 var user_int3: int = 0
@@ -39,8 +31,7 @@ var _is_oil_and_was_applied_already: bool = false
 var _horadric_lock_is_enabled: bool = false
 var _is_fresh: bool = true
 
-# Call add_modification() on _modifier in subclass to add item effects
-var _modifier: Modifier = Modifier.new()
+var _modifier: Modifier
 var _autocast: Autocast = null
 var _aura_carrier_bt: BuffType
 var _triggers_bt: BuffType
@@ -49,7 +40,6 @@ var _inherited_periodic_timers: Dictionary = {}
 var _player: Player = null
 var _item_behavior: ItemBehavior
 
-static var _uid_max: int = 1
 var _uid: int = 0
 
 
@@ -61,12 +51,13 @@ func _init(id: int, player: Player):
 #	NOTE: fix "unused variable" warning
 	_is_oil_and_was_applied_already = _is_oil_and_was_applied_already
 
-	_uid = _uid_max
-	Item._uid_max += 1
+	_uid = UidMaxTracker.get_uid_max_and_increment(UidMaxTracker.Type.ITEM)
 	GroupManager.add("items", self, get_uid())
 
 	_id = id
 	_player = player
+
+	_modifier = ItemProperties.get_specials_modifier(_id)
 
 	var item_name: String = get_display_name()
 
@@ -310,7 +301,11 @@ func _add_to_tower(tower: Tower):
 		_autocast.set_caster(_carrier)
 
 	_triggers_buff = _triggers_bt.apply_to_unit_permanent(_carrier, _carrier, 0)
-	for timer in _inherited_periodic_timers.values():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_timer_keys: Array = _inherited_periodic_timers.keys()
+	sorted_timer_keys.sort()
+	for key in sorted_timer_keys:
+		var timer: ManualTimer = _inherited_periodic_timers[key]
 		timer.set_paused(false)
 	_triggers_buff.inherit_periodic_timers(_inherited_periodic_timers)
 	_aura_carrier_bt.apply_to_unit_permanent(_carrier, _carrier, 0)
@@ -350,7 +345,11 @@ func _remove_from_tower():
 		_autocast.set_caster(null)
 
 	_inherited_periodic_timers = _triggers_buff.get_periodic_timers()
-	for timer in _inherited_periodic_timers.values():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_timer_keys: Array = _inherited_periodic_timers.keys()
+	sorted_timer_keys.sort()
+	for key in sorted_timer_keys:
+		var timer: ManualTimer = _inherited_periodic_timers[key]
 		timer.reparent(self)
 		timer.set_paused(true)
 
@@ -363,7 +362,7 @@ func _on_freshness_timer_timeout():
 
 func _set_item_behavior(item_behavior: ItemBehavior):
 	_item_behavior = item_behavior
-	_item_behavior.init(self, _modifier, _triggers_bt)
+	_item_behavior.init(self, _triggers_bt)
 
 
 #########################

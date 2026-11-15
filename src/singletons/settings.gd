@@ -11,7 +11,14 @@ signal changed()
 
 const SETTINGS_PATH: String = "user://settings.save"
 
+enum InterfaceSize {
+	SMALL,
+	MEDIUM,
+	LARGE
+}
+
 # List of setting names
+const ENABLE_PLUS_MODE: String = "enable_plus_mode"
 const SHOW_ALL_DAMAGE_NUMBERS: String = "show_all_damage_numbers"
 const ENABLE_FLOATING_TEXT: String = "enable_floating_text"
 const ENABLE_VFX: String = "enable_vfx"
@@ -27,9 +34,9 @@ const COMBAT_LOG_X: String = "combat_log_x"
 const COMBAT_LOG_Y: String = "combat_log_y"
 const INTERFACE_SIZE: String = "interface_size"
 const INTERFACE_SIZE_DICT: Dictionary = {
-	"SETTINGS_INTERFACE_SMALL": 0.75,
-	"SETTINGS_INTERFACE_MEDIUM": 1.0,
-	"SETTINGS_INTERFACE_LARGE": 1.25
+	InterfaceSize.SMALL: 0.75,
+	InterfaceSize.MEDIUM: 1.0,
+	InterfaceSize.LARGE: 1.25
 }
 const SHOW_TUTORIAL_ON_START: String = "show_tutorial_on_start"
 const CACHED_GAME_DIFFICULTY: String = "CACHED_GAME_DIFFICULTY"
@@ -51,6 +58,7 @@ var _cache: Dictionary = {}
 # only supports floats. If we don't do this, then the type
 # checking of cache will fail.
 var _default_value_map: Dictionary = {
+	ENABLE_PLUS_MODE: false,
 	SHOW_ALL_DAMAGE_NUMBERS: false,
 	ENABLE_FLOATING_TEXT: true,
 	ENABLE_VFX: true,
@@ -62,7 +70,7 @@ var _default_value_map: Dictionary = {
 	SHOW_COMBAT_LOG: false,
 	COMBAT_LOG_X: 20.0,
 	COMBAT_LOG_Y: 600.0,
-	INTERFACE_SIZE: "SETTINGS_INTERFACE_MEDIUM",
+	INTERFACE_SIZE: InterfaceSize.MEDIUM as float,
 	SHOW_TUTORIAL_ON_START: true,
 	CACHED_GAME_DIFFICULTY: "beginner",
 	CACHED_GAME_MODE: "random_with_upgrades",
@@ -73,7 +81,7 @@ var _default_value_map: Dictionary = {
 	DISPLAY_MODE: DisplayMode.enm.FULLSCREEN as float,
 	MISSION_STATUS: {},
 	SHOWED_ONE_TIME_HELP_POPUP: false,
-	LANGUAGE: "en"
+	LANGUAGE: OS.get_locale_language(),
 }
 
 
@@ -110,6 +118,30 @@ func _ready():
 		flush()
 
 	_load_window_settings()
+	
+	load_language_setting()
+
+
+# NOTE: need to switch fonts when switching languages
+# because the English "Friz" font doesn't support Chinese
+# characters. If we don't switch, then on desktop the game
+# will fallback to system font and Chinese will render ok.
+# On html5, system fonts are not available and Chinese
+# characters won't draw at all - that's why this step is
+# necessary.
+func load_language_setting():
+	var selected_language: String = get_setting(Settings.LANGUAGE)
+	TranslationServer.set_locale(selected_language)
+	
+	var chinese_locale: String = Language.get_locale_from_enum(Language.enm.CHINESE)
+	var font_for_selected_language: Font
+	if selected_language == chinese_locale:
+		font_for_selected_language = Preloads.noto_sans_chinese_font
+	else:
+		font_for_selected_language = Preloads.friz_font
+	
+	var theme: Theme = preload("res://resources/theme/wc3_theme.tres")
+	theme.default_font = font_for_selected_language
 
 
 #########################
@@ -136,6 +168,9 @@ func get_bool_setting(setting: String) -> bool:
 
 func set_setting(setting: String, value: Variant):
 	_cache[setting] = value
+	
+	if setting == Settings.LANGUAGE:
+		load_language_setting()
 
 
 # Save all changes to file
@@ -149,9 +184,16 @@ func flush():
 	changed.emit()
 
 
+func get_interface_size_enum() -> Settings.InterfaceSize:
+	var interface_size_int: int = Settings.get_setting(Settings.INTERFACE_SIZE) as int
+	var interface_size_enum: Settings.InterfaceSize = interface_size_int as Settings.InterfaceSize
+	
+	return interface_size_enum
+
+
 func get_interface_size() -> float:
-	var interface_size_string: String = _cache[Settings.INTERFACE_SIZE]
-	var interface_size: float = INTERFACE_SIZE_DICT[interface_size_string]
+	var interface_size_enum: Settings.InterfaceSize = get_interface_size_enum()
+	var interface_size: float = INTERFACE_SIZE_DICT[interface_size_enum]
 
 	return interface_size
 

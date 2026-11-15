@@ -9,16 +9,12 @@ extends ItemBehavior
 # 	triggers.add_periodic_event(periodic, 5)
 
 
-# func load_modifier(modifier: Modifier):
-# 	modifier.add_modification(Modification.Type.MOD_ARMOR, 0.0, 0.0)
-
-
 # func item_init():
 # 	example_bt = BuffType.new("example_bt", 5, 0, true, self)
 # 	example_bt.set_buff_icon("res://resources/icons/generic_icons/egg.tres")
 # 	example_bt.set_buff_tooltip(tr("AAAA"))
 # 	var mod: Modifier = Modifier.new()
-# 	mod.add_modification(Modification.Type.MOD_ARMOR, 0.0, 0.0)
+# 	mod.add_modification(ModificationType.enm.MOD_ARMOR, 0.0, 0.0)
 # 	example_bt.set_buff_modifier(mod)
 
 

@@ -40,8 +40,9 @@ const LEVEL_UP_EFFECT_SIZE: float = 64.0
 const SPELL_DAMAGE_RATIO: float = 0.9
 const SPELL_DAMAGE_RATIO_FOR_SIF: float = 0.4
 
-const MAX_LEVEL: int = 25
-const PLAYER_MAX_LEVEL: int = 225
+const TOWER_MAX_LEVEL_BASE: int = 25
+const TOWER_MAX_LEVEL_WITH_BONUS: int = 30
+const PLAYER_MAX_LEVEL: int = 300
 const SIF_ARMOR_CHANCE: float = 0.15
 const MIN_WAVE_FOR_SPECIAL: int = 8
 
@@ -107,22 +108,19 @@ const INITIAL_TIME_OF_DAY: float = 12.0
 # this because creep hp can go up to billions in bonus
 # waves.
 const DAMAGE_MIN: float = 0
-const DAMAGE_MAX: float = 1000000000000
+const DAMAGE_MAX: float = 1000000000000000
 
 const SIF_CREEP_HEALTH_MULTIPLIER: float = 0.48
 
 const TIME_BEFORE_FIRST_WAVE: float = 180.0
 const TIME_BETWEEN_WAVES: float = 15.0
 
-const MAX_ELEMENT_LEVEL: int = 15
+const MAX_ELEMENT_LEVEL_BASE: int = 15
 
 const BUFFGROUP_COUNT: int = 6
 
 const MAX_UPDATE_TICKS_PER_PHYSICS_TICK: int = 20
 
-# NOTE: this value is the default, final value can be
-# modified by some builders.
-const WISDOM_UPGRADE_MAX_DEFAULT: int = 8
 # NOTE: this value is the same as in original game. Player
 # earns about 60k score points per hour at medium
 # difficulty. Player must earn lvl 20 to unlock all
@@ -174,4 +172,4 @@ const PLAYER_NAME_ALLOWED_CHARS: String = "[A-Za-z]"
 const PLAYER_NAME_LENGTH_MIN: int = 2
 const PLAYER_NAME_LENGTH_MAX: int = 15
 
-const TOWER_ATTACK_ABILITY_NAME: String = "Normal attack"
+const TOWER_ATTACK_ABILITY_NAME_ENGLISH: String = "Normal attack"

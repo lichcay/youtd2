@@ -16,8 +16,8 @@ func load_triggers(triggers: BuffType):
 func tower_init():
 	speedcast_bt = BuffType.new("speedcast_bt", 3.5, 0.1, true, self)
 	var mock_genis_speedcast_mod: Modifier = Modifier.new()
-	mock_genis_speedcast_mod.add_modification(Modification.Type.MOD_TRIGGER_CHANCES, 0.25, 0.01)
-	mock_genis_speedcast_mod.add_modification(Modification.Type.MOD_ATTACKSPEED, 0.25, 0.01)
+	mock_genis_speedcast_mod.add_modification(ModificationType.enm.MOD_TRIGGER_CHANCES, 0.25, 0.01)
+	mock_genis_speedcast_mod.add_modification(ModificationType.enm.MOD_ATTACKSPEED, 0.25, 0.01)
 	speedcast_bt.set_buff_modifier(mock_genis_speedcast_mod)
 	speedcast_bt.set_buff_icon("res://resources/icons/generic_icons/holy_grail.tres")
 	speedcast_bt.set_buff_tooltip(tr("FY84"))
@@ -29,15 +29,15 @@ func tower_init():
 
 	magic_boost_bt = BuffType.new("magic_boost_bt", 3, 0, true, self)
 	var mock_genis_magic_boost_mod: Modifier = Modifier.new()
-	mock_genis_magic_boost_mod.add_modification(Modification.Type.MOD_SPELL_DAMAGE_DEALT, 0.2, 0.01)
+	mock_genis_magic_boost_mod.add_modification(ModificationType.enm.MOD_SPELL_DAMAGE_DEALT, 0.2, 0.01)
 	magic_boost_bt.set_buff_modifier(mock_genis_magic_boost_mod)
 	magic_boost_bt.set_buff_icon("res://resources/icons/generic_icons/gold_bar.tres")
 	magic_boost_bt.set_buff_tooltip(tr("MF10"))
 
 	swarm_st = SpellType.new(SpellType.Name.CARRION_SWARM, 1, self)
 	swarm_st.data.swarm.damage = 1.0
-	swarm_st.data.swarm.start_radius = 100
-	swarm_st.data.swarm.end_radius = 300
+	swarm_st.data.swarm.start_radius = 30
+	swarm_st.data.swarm.end_radius = 50
 	swarm_st.data.swarm.travel_distance = 1200
 	swarm_st.data.swarm.effect_path = "res://src/effects/moonwell_target.tscn"
 

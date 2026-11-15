@@ -37,7 +37,7 @@ unicode = 105
 [sub_resource type="Shortcut" id="Shortcut_ree63"]
 events = [SubResource("InputEventKey_cgjl0")]
 
-[node name="HUD" type="Control" node_paths=PackedStringArray("_error_message_container", "_normal_message_container", "_game_over_label", "_elements_menu", "_tower_stash_menu", "_item_stash_menu", "_tower_stash_button", "_item_stash_button", "_top_left_menu", "_unit_menu", "_chat_line_edit", "_desync_indicator", "_button_tooltip_top", "_button_tooltip_bottom", "_tower_details", "_creep_details", "_ping_label", "_players_are_lagging_indicator", "_lagging_player_list_label", "_multiplayer_pause_indicator", "_mission_tracker_container", "_one_time_help_popup")]
+[node name="HUD" type="Control" node_paths=PackedStringArray("_error_message_container", "_normal_message_container", "_game_over_label", "_elements_menu", "_tower_stash_menu", "_item_stash_menu", "_tower_stash_button", "_item_stash_button", "_top_left_menu", "_unit_menu", "_chat_line_edit", "_desync_indicator", "_button_tooltip_top", "_button_tooltip_bottom", "_tower_details", "_creep_details", "_ping_label", "_players_are_lagging_indicator", "_lagging_player_list_label", "_quit_button", "_drop_players_button", "_multiplayer_pause_indicator", "_mission_tracker_container", "_one_time_help_popup")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -51,7 +51,7 @@ script = ExtResource("11")
 _error_message_container = NodePath("MarginContainer8/ErrorMessageContainer")
 _normal_message_container = NodePath("MarginContainer/VBoxContainer/NormalMessageContainer")
 _game_over_label = NodePath("GameOverLabel")
-_elements_menu = NodePath("MarginContainer7/MarginContainer2/HBoxContainer/ElementsMenu")
+_elements_menu = NodePath("MarginContainer7/MarginContainer3/VBoxContainer/ElementsMenu")
 _tower_stash_menu = NodePath("MarginContainer7/MarginContainer2/HBoxContainer/TowerStashMenu")
 _item_stash_menu = NodePath("MarginContainer7/MarginContainer2/HBoxContainer/ItemStashMenu")
 _tower_stash_button = NodePath("MarginContainer7/MarginContainer/VBoxContainer/TowerStashButton")
@@ -67,6 +67,8 @@ _creep_details = NodePath("MarginContainer4/CreepDetails")
 _ping_label = NodePath("MarginContainer10/VBoxContainer/PingLabel")
 _players_are_lagging_indicator = NodePath("PlayersAreLaggingIndicator")
 _lagging_player_list_label = NodePath("PlayersAreLaggingIndicator/PanelContainer/VBoxContainer/VBoxContainer2/LaggingPlayerListLabel")
+_quit_button = NodePath("PlayersAreLaggingIndicator/PanelContainer/VBoxContainer/QuitButton")
+_drop_players_button = NodePath("PlayersAreLaggingIndicator/PanelContainer/VBoxContainer/DropPlayersButton")
 _multiplayer_pause_indicator = NodePath("MultiplayerPauseIndicator")
 _mission_tracker_container = NodePath("MarginContainer3/VBoxContainer/MissionTrackerContainer")
 _one_time_help_popup = NodePath("MarginContainer3/VBoxContainer/OneTimeHelpPopup")
@@ -235,41 +237,66 @@ mouse_filter = 2
 theme_override_constants/margin_top = 15
 theme_override_constants/margin_right = 15
 
+[node name="MarginContainer4" type="MarginContainer" parent="MarginContainer7"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_top = 50
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer7/MarginContainer4"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+
+[node name="ElementsMenuButton" parent="MarginContainer7/MarginContainer4/VBoxContainer" node_paths=PackedStringArray("_menu") instance=ExtResource("7_2qbjb")]
+layout_mode = 2
+tooltip_text = "HUD_TOOLTIP_ELEMENTS"
+icon = ExtResource("10_ylm6g")
+_menu = NodePath("../../../MarginContainer3/VBoxContainer/ElementsMenu")
+
 [node name="MarginContainer" type="MarginContainer" parent="MarginContainer7"]
 layout_mode = 2
-theme_override_constants/margin_top = 80
+mouse_filter = 2
+theme_override_constants/margin_top = 250
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer7/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 0
 
-[node name="ElementsMenuButton" parent="MarginContainer7/MarginContainer/VBoxContainer" node_paths=PackedStringArray("_menu") instance=ExtResource("7_2qbjb")]
-layout_mode = 2
-tooltip_text = "Open Elements Menu"
-button_group = ExtResource("7_8m5sl")
-icon = ExtResource("10_ylm6g")
-_menu = NodePath("../../../MarginContainer2/HBoxContainer/ElementsMenu")
-
 [node name="TowerStashButton" parent="MarginContainer7/MarginContainer/VBoxContainer" node_paths=PackedStringArray("_menu") instance=ExtResource("7_2qbjb")]
 layout_mode = 2
-tooltip_text = "Open Tower Stash"
+tooltip_text = "HUD_TOOLTIP_TOWER_STASH"
 button_group = ExtResource("7_8m5sl")
 shortcut = SubResource("Shortcut_ejtke")
 _menu = NodePath("../../../MarginContainer2/HBoxContainer/TowerStashMenu")
 
 [node name="ItemStashButton" parent="MarginContainer7/MarginContainer/VBoxContainer" node_paths=PackedStringArray("_menu") instance=ExtResource("7_2qbjb")]
 layout_mode = 2
-tooltip_text = "Open Item Stash"
+tooltip_text = "HUD_TOOLTIP_ITEM_STASH"
 button_group = ExtResource("7_8m5sl")
 shortcut = SubResource("Shortcut_ree63")
 icon = ExtResource("12_vixmf")
 _menu = NodePath("../../../MarginContainer2/HBoxContainer/ItemStashMenu")
 
+[node name="MarginContainer3" type="MarginContainer" parent="MarginContainer7"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 120
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer7/MarginContainer3"]
+layout_mode = 2
+
+[node name="ElementsMenu" parent="MarginContainer7/MarginContainer3/VBoxContainer" instance=ExtResource("17_bxii1")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+
 [node name="MarginContainer2" type="MarginContainer" parent="MarginContainer7"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/margin_top = 40
+theme_override_constants/margin_top = 210
 theme_override_constants/margin_right = 120
 
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer7/MarginContainer2"]
@@ -283,7 +310,7 @@ alignment = 2
 layout_mode = 2
 size_flags_vertical = 0
 mouse_filter = 2
-theme_override_constants/margin_top = 80
+theme_override_constants/margin_top = 40
 
 [node name="ButtonTooltipTop" parent="MarginContainer7/MarginContainer2/HBoxContainer/MarginContainer" instance=ExtResource("11_ka7k1")]
 visible = false
@@ -297,11 +324,6 @@ layout_mode = 2
 size_flags_vertical = 0
 
 [node name="TowerStashMenu" parent="MarginContainer7/MarginContainer2/HBoxContainer" instance=ExtResource("15_eivr8")]
-visible = false
-layout_mode = 2
-size_flags_vertical = 0
-
-[node name="ElementsMenu" parent="MarginContainer7/MarginContainer2/HBoxContainer" instance=ExtResource("17_bxii1")]
 visible = false
 layout_mode = 2
 size_flags_vertical = 0
@@ -438,8 +460,14 @@ Alice"
 horizontal_alignment = 1
 
 [node name="QuitButton" type="Button" parent="PlayersAreLaggingIndicator/PanelContainer/VBoxContainer"]
+visible = false
 layout_mode = 2
 text = "Quit to Title"
+
+[node name="DropPlayersButton" type="Button" parent="PlayersAreLaggingIndicator/PanelContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+text = "Drop Lagging Players"
 
 [node name="MultiplayerPauseIndicator" parent="." instance=ExtResource("20_cbamn")]
 visible = false
@@ -448,3 +476,4 @@ layout_mode = 1
 [connection signal="close_pressed" from="MarginContainer3/VBoxContainer/OneTimeHelpPopup" to="." method="_on_one_time_help_popup_close_pressed"]
 [connection signal="details_pressed" from="MarginContainer5/VBoxContainer2/UnitMenu" to="." method="_on_unit_menu_details_pressed"]
 [connection signal="pressed" from="PlayersAreLaggingIndicator/PanelContainer/VBoxContainer/QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="pressed" from="PlayersAreLaggingIndicator/PanelContainer/VBoxContainer/DropPlayersButton" to="." method="_on_drop_lagging_button_pressed"]

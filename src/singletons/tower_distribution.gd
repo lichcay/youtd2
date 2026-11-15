@@ -55,14 +55,28 @@ func _generate_random_towers(player: Player) -> Array[int]:
 	if element_list.is_empty():
 		return []
 
+	var plus_mode_is_enabled: bool = Settings.get_bool_setting(Settings.ENABLE_PLUS_MODE)
+
 #	On first pass, try to roll each element once. This is
 #	likely to not result in any towers at low element
 #	levels.
 	for element in element_list:
-		var tower: int = _generate_random_tower_for_element(player, element)
+		var chance_for_element: float = _get_chance_for_element(player, element)
 
-		if tower != 0:
-			tower_list.append(tower)
+		# NOTE: plus mode introduces a concept of "benefit
+		# from >100%" chance. In original game >100% chance
+		# did not give benefits, so disable it if plus mode
+		# is disabled.
+		if !plus_mode_is_enabled:
+			chance_for_element = clampf(chance_for_element, 0.0, 1.0)
+
+		while chance_for_element > 0:
+			var tower: int = _generate_random_tower_for_element(player, element, chance_for_element)
+
+			if tower != 0:
+				tower_list.append(tower)
+			
+			chance_for_element -= 1.0
 
 #	If first pass rolled 0 towers, we do a second pass where
 #	we roll 1 tower by brute force. This pass will happen
@@ -98,7 +112,8 @@ func generate_random_towers_with_count(player: Player, count: int) -> Array[int]
 		var element: Element.enm = element_list.pop_front()
 		element_list.push_back(element)
 
-		var tower: int = _generate_random_tower_for_element(player, element)
+		var chance_for_element: float = _get_chance_for_element(player, element)
+		var tower: int = _generate_random_tower_for_element(player, element, chance_for_element)
 
 		if tower != 0:
 			tower_list.append(tower)
@@ -209,9 +224,7 @@ func _generate_tower_groups(first_tier_only: bool) -> Dictionary:
 
 
 # Returns 0 if failed to generate
-func _generate_random_tower_for_element(player: Player, element: Element.enm) -> int:
-	var chance_for_element: float = _get_chance_for_element(player, element)
-	
+func _generate_random_tower_for_element(player: Player, element: Element.enm, chance_for_element: float) -> int:
 	var roll_success: bool = Utils.rand_chance(Globals.synced_rng, chance_for_element)
 	if !roll_success:
 		return 0
@@ -224,10 +237,17 @@ func _generate_random_tower_for_element(player: Player, element: Element.enm) ->
 	max_cost *= cost_multiplier_for_rarity
 
 	var group_map: Dictionary
+	var weight_cost_power: float
 	match Globals.get_game_mode():
-		GameMode.enm.RANDOM_WITH_UPGRADES: group_map = _tower_groups_first_tier_only
-		GameMode.enm.TOTALLY_RANDOM: group_map = _tower_groups_all_tiers
-		_: group_map = {}
+		GameMode.enm.RANDOM_WITH_UPGRADES: 
+			group_map = _tower_groups_first_tier_only
+			weight_cost_power = 0.25
+		GameMode.enm.TOTALLY_RANDOM: 
+			group_map = _tower_groups_all_tiers
+			weight_cost_power = 0.8
+		_: 
+			group_map = {}
+			weight_cost_power = 0.0
 
 #	Remove all towers which are above max cost. If group
 #	ends up being empty, reduce rarity.
@@ -252,15 +272,21 @@ func _generate_random_tower_for_element(player: Player, element: Element.enm) ->
 
 #	NOTE: adjust chance of picking a tower based on it's
 #	cost
-#	- if cost is 50, then weight is ~2287
-#	- if cost is 100, then weight is ~8000
+#	for total random:
+#	- if cost is 50, then weight is ~22.87
+#	- if cost is 100, then weight is ~39.81
+#	- that means for if tower is 2x more expensive it is x1.741 likelier to appear
+#	for random with upgrade:
+#	- if cost is 50, then weight is ~2.659
+#	- if cost is 100, then weight is ~3.162
+#	- that means for if tower is 2x more expensive it is x1.189 likelier to appear
 #	This means that we will pick towers with higher costs
 #	more often. This way, the player will get the most
 #	powerful towers available at the moment.
 	var group_weights: Dictionary = {}
 	for tower in group:
 		var cost: int = TowerProperties.get_cost(tower)
-		var weight: float = floorf(100 * pow(cost, 0.8))
+		var weight: float = pow(cost, weight_cost_power)
 		group_weights[tower] = weight
 
 	var random_tower: int = Utils.random_weighted_pick(Globals.synced_rng, group_weights)

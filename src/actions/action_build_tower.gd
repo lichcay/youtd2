@@ -35,6 +35,10 @@ static func execute(action: Dictionary, player: Player, build_space: BuildSpace)
 
 	var new_tower: Tower = Tower.make(tower_id, player)
 
+	var unit_uid_max: int = UidMaxTracker.get_uid_max(UidMaxTracker.Type.UNIT)
+
+	print_verbose("[desync-debug] built tower id=%d uid=%d (Unit uid_max now %d)" % [tower_id, new_tower.get_uid(), unit_uid_max])
+
 #	NOTE: need to add tile height to position because towers
 #	are built at ground floor
 	var build_position_canvas: Vector2 = VectorUtils.snap_canvas_pos_to_buildable_pos(mouse_pos)

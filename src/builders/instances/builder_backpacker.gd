@@ -8,7 +8,7 @@ func _init():
 
 func _get_tower_modifier() -> Modifier:
     var mod: Modifier = Modifier.new()
-    mod.add_modification(Modification.Type.MOD_ITEM_QUALITY_ON_KILL, 0.40, 0.0)
+    mod.add_modification(ModificationType.enm.MOD_ITEM_QUALITY_ON_KILL, 0.40, 0.0)
 
     return mod
 
@@ -39,4 +39,4 @@ func backpacker_bt_periodic(event: Event):
             dropped_items = true
     
     if dropped_items:
-        tower.get_player().display_floating_text("Backpacker: Item must have same rarity as tower!", tower, Color.RED)
+        tower.get_player().display_floating_text(tr("BUILDER_BACKPACKER_ERROR_TEXT"), tower, Color.RED)

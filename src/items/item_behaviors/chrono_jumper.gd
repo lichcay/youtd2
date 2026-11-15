@@ -26,7 +26,7 @@ var original_pos: Vector2 = Vector2.ZERO
 func item_init():
 	jumper_bt = BuffType.new("jumper_bt", JUMP_DURATION, 0, true, self)
 	var jumper_bt_mod: Modifier = Modifier.new()
-	jumper_bt_mod.add_modification(Modification.Type.MOD_ATTACKSPEED, ATTACKSPEED_BONUS, 0.0)
+	jumper_bt_mod.add_modification(ModificationType.enm.MOD_ATTACKSPEED, ATTACKSPEED_BONUS, 0.0)
 	jumper_bt.set_buff_modifier(jumper_bt_mod)
 	jumper_bt.set_buff_icon("res://resources/icons/generic_icons/atomic_slashes.tres")
 	jumper_bt.set_buff_tooltip(tr("1UM5"))
@@ -45,7 +45,8 @@ func on_autocast(event: Event):
 	var tower_already_jumping: bool = tower.get_buff_of_type(jumper_bt) != null
 
 	if tower_already_jumping:
-		player.display_floating_text("Cannot jump right now.", tower, Color.PURPLE)
+		var cannot_jump_right_now_text: String = tr("MB3D")
+		player.display_floating_text(cannot_jump_right_now_text, tower, Color.PURPLE)
 
 		return
 
@@ -71,7 +72,8 @@ func on_autocast(event: Event):
 		if found_buildable_pos:
 			dest_pos_canvas = nearby_buildable_pos
 		else:
-			player.display_floating_text_at_pos("Cannot jump to this position.", target_pos_wc3, Color.PURPLE)
+			var cannot_jump_to_position_text: String = tr("FJ63")
+			player.display_floating_text_at_pos(cannot_jump_to_position_text, target_pos_wc3, Color.PURPLE)
 			
 			return
 
@@ -127,9 +129,9 @@ func jumper_bt_on_create(_event: Event):
 func jumper_bt_on_cleanup(_event: Event):
 	var tower: Tower = item.get_carrier()
 
-#	NOTE: need to call get_tree() on tower because item is
+#	NOTE: need to call on tower because item is
 #	outside tree during CLEANUP callback
-	await Utils.create_manual_timer(0.1, self).timeout
+	await Utils.create_manual_timer(0.1, tower).timeout
 
 	if !Utils.unit_is_valid(tower):
 		return

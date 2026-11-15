@@ -43,35 +43,35 @@ func load_triggers(triggers: BuffType):
 func tower_init():
 	undead_bt = BuffType.new("undead_bt", 1, 0, true, self)
 	var palandu_xeno_undead_mod: Modifier = Modifier.new()
-	palandu_xeno_undead_mod.add_modification(Modification.Type.MOD_DMG_TO_UNDEAD, 0.0, 0.001)
+	palandu_xeno_undead_mod.add_modification(ModificationType.enm.MOD_DMG_TO_UNDEAD, 0.0, 0.001)
 	undead_bt.set_buff_modifier(palandu_xeno_undead_mod)
 	undead_bt.set_buff_icon("res://resources/icons/generic_icons/spell_book.tres")
 	undead_bt.set_buff_tooltip(tr("JRUK"))
 
 	magic_bt = BuffType.new("magic_bt", 1, 0, true, self)
 	var palandu_xeno_magic_mod: Modifier = Modifier.new()
-	palandu_xeno_magic_mod.add_modification(Modification.Type.MOD_DMG_TO_MAGIC, 0.0, 0.001)
+	palandu_xeno_magic_mod.add_modification(ModificationType.enm.MOD_DMG_TO_MAGIC, 0.0, 0.001)
 	magic_bt.set_buff_modifier(palandu_xeno_magic_mod)
 	magic_bt.set_buff_icon("res://resources/icons/generic_icons/spell_book.tres")
 	magic_bt.set_buff_tooltip(tr("O429"))
 
 	nature_bt = BuffType.new("nature_bt", 1, 0, true, self)
 	var palandu_xeno_nature_mod: Modifier = Modifier.new()
-	palandu_xeno_nature_mod.add_modification(Modification.Type.MOD_DMG_TO_NATURE, 0.0, 0.001)
+	palandu_xeno_nature_mod.add_modification(ModificationType.enm.MOD_DMG_TO_NATURE, 0.0, 0.001)
 	nature_bt.set_buff_modifier(palandu_xeno_nature_mod)
 	nature_bt.set_buff_icon("res://resources/icons/generic_icons/spell_book.tres")
 	nature_bt.set_buff_tooltip(tr("V3LT"))
 
 	orc_bt = BuffType.new("orc_bt", 1, 0, true, self)
 	var palandu_xeno_orc_mod: Modifier = Modifier.new()
-	palandu_xeno_orc_mod.add_modification(Modification.Type.MOD_DMG_TO_ORC, 0.0, 0.001)
+	palandu_xeno_orc_mod.add_modification(ModificationType.enm.MOD_DMG_TO_ORC, 0.0, 0.001)
 	orc_bt.set_buff_modifier(palandu_xeno_orc_mod)
 	orc_bt.set_buff_icon("res://resources/icons/generic_icons/spell_book.tres")
 	orc_bt.set_buff_tooltip(tr("BZQR"))
 
 	humanoid_bt = BuffType.new("humanoid_bt", 1, 0, true, self)
 	var palandu_xeno_humanoid_mod: Modifier = Modifier.new()
-	palandu_xeno_humanoid_mod.add_modification(Modification.Type.MOD_DMG_TO_HUMANOID, 0.0, 0.001)
+	palandu_xeno_humanoid_mod.add_modification(ModificationType.enm.MOD_DMG_TO_HUMANOID, 0.0, 0.001)
 	humanoid_bt.set_buff_modifier(palandu_xeno_humanoid_mod)
 	humanoid_bt.set_buff_icon("res://resources/icons/generic_icons/spell_book.tres")
 	humanoid_bt.set_buff_tooltip(tr("UELS"))
@@ -121,7 +121,8 @@ func on_damage(event: Event):
 
 	CombatLog.log_ability(tower, creep, "Sample Collection")
 
-	tower.get_player().display_small_floating_text("Sample Collected", creep, Color8(200, 200, 200), 40.0)
+	var sample_collected_text: String = tr("Q346")
+	tower.get_player().display_small_floating_text(sample_collected_text, creep, Color8(200, 200, 200), 40.0)
 	var new_bonus: int = min(current_bonus + 50, bonus_max)
 	bonus_map[creep_category] = new_bonus
 	force_show_research_message = true
@@ -138,17 +139,23 @@ func xeno_manage_bonuses(is_type_change: bool, current_bonus: int):
 		return
 
 	if is_type_change:
-		for category in bonus_map.keys():
+#		NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+		var sorted_category_keys: Array = bonus_map.keys()
+		sorted_category_keys.sort()
+		for category in sorted_category_keys:
 			bonus_map[category] = bonus_map[category] / 2
 #		now restore the correct one :P
 		bonus_map[current_creep_category] = current_bonus
 
 #	now set the correct race bonuses for this tower
-	for category in bonus_map.keys():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_bonus_keys: Array = bonus_map.keys()
+	sorted_bonus_keys.sort()
+	for category in sorted_bonus_keys:
 		var ideal_bonus: float = 1.0 + bonus_map[category] / 1000.0
 		var current_race_bonus: float = tower.get_damage_to_category(category)
-		var mod_type: Modification.Type = CreepCategory.convert_to_mod_dmg_type(category)
-		
+		var mod_type: ModificationType.enm = CreepCategory.convert_to_mod_dmg_type(category)
+
 		if ideal_bonus != current_race_bonus:
 			var delta: float = ideal_bonus - current_race_bonus
 			tower.modify_property(mod_type, delta)
@@ -162,12 +169,12 @@ func xeno_buff_towers(is_type_change: bool):
 	var buff_level: int = bonus_map[current_creep_category]
 	prev_creep_category = current_creep_category
 
-	var category_string = CreepCategory.convert_to_string(current_creep_category).capitalize()
+	var category_string = CreepCategory.get_display_string(current_creep_category)
 	var category_color: Color = CreepCategory.get_color(current_creep_category)
-	var floating_text: String = "%s Research Published" % category_string
+	var research_published_text: String = tr("E2IZ").format({CREEP_RACE = category_string})
 
 	if (is_type_change && buff_level > 0) || force_show_research_message:
-		tower.get_player().display_floating_text(floating_text, tower, category_color)
+		tower.get_player().display_floating_text(research_published_text, tower, category_color)
 		force_show_research_message = false
 
 	var category_to_bt: Dictionary = {

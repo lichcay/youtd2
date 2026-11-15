@@ -14,11 +14,6 @@ func get_tier_stats() -> Dictionary:
 	}
 
 
-const SHOCKWAVE_START_RADIUS: float = 100
-const SHOCKWAVE_END_RADIUS: float = 300
-const SHOCKWAVE_RANGE_FROM_TARGET: float = 500
-
-
 func load_triggers(triggers: BuffType):
 	triggers.add_event_on_attack(on_attack)
 
@@ -26,7 +21,7 @@ func load_triggers(triggers: BuffType):
 func tower_init():
 	aura_bt = BuffType.create_aura_effect_type("aura_bt", true, self)
 	var mod: Modifier = Modifier.new()
-	mod.add_modification(Modification.Type.MOD_DMG_TO_UNDEAD, _stats.mod_dmg_to_undead, _stats.mod_dmg_to_undead_add)
+	mod.add_modification(ModificationType.enm.MOD_DMG_TO_UNDEAD, _stats.mod_dmg_to_undead, _stats.mod_dmg_to_undead_add)
 	aura_bt.set_buff_modifier(mod)
 	aura_bt.set_buff_icon("res://resources/icons/generic_icons/shiny_omega.tres")
 	aura_bt.set_buff_tooltip(tr("HZID"))
@@ -36,9 +31,9 @@ func tower_init():
 #	tower
 	shockwave_st = SpellType.new(SpellType.Name.CARRION_SWARM, 1, self)
 	shockwave_st.data.swarm.damage = 1.0
-	shockwave_st.data.swarm.start_radius = SHOCKWAVE_START_RADIUS
-	shockwave_st.data.swarm.end_radius = SHOCKWAVE_END_RADIUS
-	shockwave_st.data.swarm.travel_distance = SHOCKWAVE_RANGE_FROM_TARGET
+	shockwave_st.data.swarm.start_radius = 30
+	shockwave_st.data.swarm.end_radius = 50
+	shockwave_st.data.swarm.travel_distance = 500
 	shockwave_st.data.swarm.effect_path = "res://src/effects/shockwave_missile.tscn"
 
 

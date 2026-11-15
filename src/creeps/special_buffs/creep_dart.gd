@@ -1,5 +1,7 @@
 class_name CreepDart extends BuffType
 
+# NOTE: this special is not affected by silence, on purpose.
+# This is how it was in the original game.
 
 const DART_CHANCE: float = 300
 const DART_CD: float = 6
@@ -14,7 +16,7 @@ func _init(parent: Node):
 	add_event_on_damaged(on_damaged)
 
 	var modifier: Modifier = Modifier.new()
-	modifier.add_modification(Modification.Type.MOD_MOVESPEED, -0.60, 0.0)
+	modifier.add_modification(ModificationType.enm.MOD_MOVESPEED, -0.60, 0.0)
 	set_buff_modifier(modifier)
 
 	tired_bt = BuffType.new("tired_bt", DART_CD, 0, true, self

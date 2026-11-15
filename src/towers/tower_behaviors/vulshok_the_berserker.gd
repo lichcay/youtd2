@@ -38,7 +38,7 @@ func tower_init():
 
 	slow_bt = BuffType.new("slow_bt", 5, 0, false, self)
 	var mod: Modifier = Modifier.new()
-	mod.add_modification(Modification.Type.MOD_MOVESPEED, -0.10, -0.001)
+	mod.add_modification(ModificationType.enm.MOD_MOVESPEED, -0.10, -0.001)
 	slow_bt.set_buff_modifier(mod)
 	slow_bt.set_buff_icon("res://resources/icons/generic_icons/foot_trip.tres")
 	slow_bt.set_buff_tooltip(tr("GLMC"))
@@ -90,18 +90,22 @@ func on_attack(event: Event):
 	if attack_count % 15 == 0:
 		CombatLog.log_ability(tower, null, "Growth")
 		
-		tower.modify_property(Modification.Type.MOD_DAMAGE_ADD_PERC, 0.005)
+		tower.modify_property(ModificationType.enm.MOD_DAMAGE_ADD_PERC, 0.005)
 
 #		Rare text has increased chance to show with increased triggerchances. ;]
 		var floating_text: String
 		if tower.calc_chance(0.005):
-			floating_text = "I WILL BATHE IN YOUR BLOOD!"
+			var bathe_in_blood_text: String = tr("DQXT")
+			floating_text = bathe_in_blood_text
 		elif tower.calc_chance(0.1):
-			floating_text = "FEAR ME!"
+			var fear_me_text: String = tr("C08E")
+			floating_text = fear_me_text
 		elif tower.calc_chance(0.4):
-			floating_text = "GRRR!"
+			var grrr_text: String = tr("MRXN")
+			floating_text = grrr_text
 		else:
-			floating_text = "ROAR!"
+			var roar_text: String = tr("JXN3")
+			floating_text = roar_text
 
 		tower.get_player().display_floating_text(floating_text, tower, Color8(255, 100, 100))
 

@@ -18,14 +18,14 @@ func load_triggers(triggers: BuffType):
 func tower_init():
 	dps_boost_bt = BuffType.new("dps_boost_bt", 0, 0, true, self)
 	var fisherman_dps_boost_mod: Modifier = Modifier.new()
-	fisherman_dps_boost_mod.add_modification(Modification.Type.MOD_DPS_ADD, 0.0, 0.001)
+	fisherman_dps_boost_mod.add_modification(ModificationType.enm.MOD_DPS_ADD, 0.0, 0.001)
 	dps_boost_bt.set_buff_modifier(fisherman_dps_boost_mod)
 	dps_boost_bt.set_buff_icon("res://resources/icons/generic_icons/meat.tres")
 	dps_boost_bt.set_buff_tooltip(tr("ZRPB"))
 
 	slow_bt = BuffType.new("slow_bt", 3, 0, false, self)
 	var fisherman_slow_mod: Modifier = Modifier.new()
-	fisherman_slow_mod.add_modification(Modification.Type.MOD_MOVESPEED, -0.25, -0.01)
+	fisherman_slow_mod.add_modification(ModificationType.enm.MOD_MOVESPEED, -0.25, -0.01)
 	slow_bt.set_buff_modifier(fisherman_slow_mod)
 	slow_bt.set_buff_icon("res://resources/icons/generic_icons/foot_trip.tres")
 	slow_bt.add_event_on_create(slow_bt_on_create)
@@ -40,8 +40,8 @@ func tower_init():
 func on_attack(event: Event):
 	var target: Unit = event.get_target()
 
-	if current_attack_target != target.get_instance_id():
-		current_attack_target = target.get_instance_id()
+	if current_attack_target != target.get_uid():
+		current_attack_target = target.get_uid()
 		current_attack_count = 0
 
 	current_attack_count += 1
@@ -83,8 +83,8 @@ func on_tower_details() -> MultiboardValues:
 
 func slow_bt_on_create(event: Event):
 	var buff: Buff = event.get_buff()
-	var net_start_time: float = Utils.get_time()
-	buff.user_real = net_start_time
+	var net_start_tick: int = Utils.get_current_tick()
+	buff.user_int2 = net_start_tick
 
 
 func slow_bt_on_expire(event: Event):
@@ -92,8 +92,10 @@ func slow_bt_on_expire(event: Event):
 	var target: Unit = buff.get_buffed_unit()
 	var lvl: int = tower.get_level()
 	var movespeed_for_strangle: float = 120 + 2.4 * lvl
-	var net_start_time: float = buff.user_real
-	var net_duration: float = Utils.get_time() - net_start_time
+	var net_start_tick: int = buff.user_int2
+	var current_tick: int = Utils.get_current_tick()
+	var net_duration_ticks: int = current_tick - net_start_tick
+	var net_duration: float = Utils.ticks_to_time(net_duration_ticks)
 	var target_can_be_strangled: bool = target.get_current_movespeed() <= movespeed_for_strangle || target.is_stunned()
 	var strangle_chance: float = (0.03 + 0.002 * lvl) * (net_duration / 3.0)
 	var damage_for_boss: float = tower.get_current_attack_damage_with_bonus() * (4 + 0.16 * lvl)

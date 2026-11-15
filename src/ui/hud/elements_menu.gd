@@ -9,7 +9,6 @@ class_name ElementsMenu extends PanelContainer
 @export var _astral_button: ElementButton
 @export var _storm_button: ElementButton
 @export var _roll_towers_button: Button
-@export var _slot_button_to_replace_roll_towers: Button
 
 @onready var _button_map: Dictionary = {
 	Element.enm.ICE: _ice_button,
@@ -56,7 +55,6 @@ func connect_to_local_player(local_player: Player):
 
 func _hide_roll_towers_button():
 	_roll_towers_button.hide()
-	_slot_button_to_replace_roll_towers.show()
 
 
 func _show_element_tooltip(button: Button, element: Element.enm):
@@ -108,5 +106,5 @@ func _on_close_button_pressed():
 
 
 func _on_roll_towers_button_mouse_entered():
-	var tooltip: String = "[color=GOLD]Roll Towers[/color]\n \nRoll a random set of starting towers. You can reroll if you don't like the initial towers but each time you will get less towers."
+	var tooltip: String = tr("ROLL_TOWERS_BUTTON_TOOLTIP")
 	ButtonTooltip.show_tooltip(_roll_towers_button, tooltip)

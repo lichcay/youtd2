@@ -67,7 +67,10 @@ func _process(_delta: float):
 	_mana_bar.set_ratio_custom(mana, mana_max)
 	
 	var unit_level: int = _unit.get_level()
-	var unit_is_max_level: bool = unit_level == Constants.MAX_LEVEL
+	
+	var max_unit_level: int = _unit.get_max_level()
+		
+	var unit_is_max_level: bool = unit_level == max_unit_level
 	if !unit_is_max_level:
 		var exp_for_current_level: int = Experience.get_exp_for_level(unit_level)
 		var exp_for_next_level: int = Experience.get_exp_for_level(unit_level + 1)
@@ -84,7 +87,7 @@ func _process(_delta: float):
 		_exp_bar.set_as_ratio(exp_ratio)
 	else:
 		var current_exp: int = floori(_unit.get_exp())
-		var exp_for_max_level: int = Experience.get_exp_for_level(Constants.MAX_LEVEL)
+		var exp_for_max_level: int = Experience.get_exp_for_level(max_unit_level)
 		_exp_bar.set_ratio_custom(current_exp, exp_for_max_level)
 	
 	if _tower != null:
@@ -116,7 +119,7 @@ func set_unit(unit: Unit):
 	
 		if prev_unit is Tower:
 			var prev_tower: Tower = prev_unit as Tower
-			prev_tower.level_up.disconnect(_on_tower_level_up)
+			prev_tower.level_changed.disconnect(_on_tower_level_changed)
 	
 #	NOTE: need to setup visibility before calling _load_tower() because it can further hide some controls conditionally.
 	for control in _visible_controls_for_tower:
@@ -160,7 +163,7 @@ func _load_unit():
 
 
 func _load_tower():
-	_tower.level_up.connect(_on_tower_level_up)
+	_tower.level_changed.connect(_on_tower_level_changed)
 	_update_level_label()
 
 	_update_sell_tooltip()
@@ -297,7 +300,7 @@ func _update_sell_tooltip():
 	var sell_ratio_string: String = Utils.format_percent(sell_ratio, 0)
 	var tower_id: int = _tower.get_id()
 	var sell_price: int = TowerProperties.get_sell_price(tower_id)
-	var tooltip: String = "Sell tower\nYou will receive %d gold (%s of original cost)." % [sell_price, sell_ratio_string]
+	var tooltip: String = tr("SELL_TOWER_BUTTON_TOOLTIP").format({GOLD_AMOUNT = sell_price, SELL_RATIO = sell_ratio_string})
 
 	_sell_button.set_tooltip_text(tooltip)
 
@@ -373,11 +376,11 @@ func _on_upgrade_button_mouse_entered():
 
 	var tooltip: String
 	if upgrade_id != -1:
-		tooltip = "[color=GOLD]Upgrade tower[/color]\n" \
+		tooltip = "[color=GOLD]%s[/color]\n" % tr("UPGRADE_TOWER_BUTTON_TITLE") \
 		+ " \n" \
 		+ RichTexts.get_tower_text(upgrade_id, local_player)
 	else:
-		tooltip = "Cannot upgrade any further."
+		tooltip = tr("UPGRADE_TOWER_BUTTON_CANNOT_UPGRADE")
 
 	ButtonTooltip.show_tooltip(_upgrade_button, tooltip, ButtonTooltip.Location.BOTTOM)
 
@@ -388,7 +391,7 @@ func _on_close_button_pressed():
 	hide()
 
 
-func _on_tower_level_up(_level_increased: bool):
+func _on_tower_level_changed(_level_increased: bool):
 	_update_level_label()
 
 

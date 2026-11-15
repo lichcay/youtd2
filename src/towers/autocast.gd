@@ -116,7 +116,6 @@ var _item_owner: Item = null
 # paused.
 @export var _auto_timer: ManualTimer
 
-static var _uid_max: int = 1
 var _uid: int = 0
 
 
@@ -128,8 +127,7 @@ func _ready():
 	_cooldown_timer.wait_time = get_cooldown()
 	_cooldown_timer.one_shot = true
 
-	_uid = _uid_max
-	Autocast._uid_max += 1
+	_uid = UidMaxTracker.get_uid_max_and_increment(UidMaxTracker.Type.AUTOCAST)
 
 	GroupManager.add("autocasts", self, get_uid())
 
@@ -144,6 +142,10 @@ func _ready():
 #########################
 ###       Public      ###
 #########################
+
+func get_id() -> int:
+	return _autocast_id
+
 
 func get_name_english() -> String:
 	var name_english: String = AutocastProperties.get_name_english(_autocast_id)
@@ -209,6 +211,10 @@ func do_cast_at_pos(target_pos: Vector2):
 
 
 # NOTE: target arg may be null if autocast is immediate
+# NOTE: this function doesn't check conditions like "caster
+# has enough mana", "not on cooldown". This has to be done
+# by the user of this function before calling the do_cast().
+# Use Autocast.can_cast() for checking.
 func do_cast(target: Unit):
 	CombatLog.log_autocast(_caster, target, self)
 
@@ -224,9 +230,10 @@ func do_cast(target: Unit):
 
 		return
 
-#	NOTE: need to subtract mana after performing autocast
-#	because some autocast handlers need to check mana value
-#	before it is spent.
+#	NOTE: the ordering of calls is important here. Must
+#	subtract mana AFTER calling the autocast handler
+#	function. This is because autocast handlers need to
+#	check mana value before it is spent.
 	var mana_cost: int = get_mana_cost()
 	_caster.subtract_mana(mana_cost, false)
 
@@ -492,13 +499,13 @@ func _get_cast_error() -> String:
 	var stunned: bool = _caster.is_stunned()
 
 	if on_cooldown:
-		return "This ability is not ready yet"
+		return tr("AUTOCAST_ERROR_NOT_READY")
 	elif !enough_mana:
-		return "Not enough mana"
+		return tr("AUTOCAST_ERROR_NOT_ENOUGH_MANA")
 	elif silenced:
-		return "Can't cast ability because caster is silenced"
+		return tr("AUTOCAST_ERROR_SILENCED")
 	elif stunned:
-		return "Can't cast ability because caster is stunned"
+		return tr("AUTOCAST_ERROR_STUNNED")
 	else:
 		return ""
 
@@ -632,8 +639,11 @@ static func make(autocast_id: int, creator_object: Object) -> Autocast:
 	if !handler_function_string.is_empty():
 		handler_function = Callable(creator_object, handler_function_string)
 		
-		if handler_function.is_null():
+		if !handler_function.is_valid():
 			push_error("Failed to find handle function for autocast. Handler function = %s, autocast id = %d" % [handler_function_string, autocast_id])
+#			NOTE: Switch to empty callable to prevent
+#			runtime errors
+			handler_function = Callable()
 	else:
 		handler_function = Callable()
 	

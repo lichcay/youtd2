@@ -30,7 +30,7 @@ var sum: Summoner = Summoner.new()
 # considering that the amount of creeps in game is capped at
 # 1000's and this stores references - it's not a big deal.
 var summoner_units: Dictionary = {}
-var time_when_last_transported: float = 0
+var tick_when_last_transported: int = 0
 
 
 func load_triggers(triggers: BuffType):
@@ -57,16 +57,17 @@ func on_attack(_event: Event):
 	if !both_fields_were_placed:
 		return
 
-#	NOTE: original script implements transport cooldown by
-#	TriggerSleepAction() which is brittle. Changed it to
-#	this approach.
-	var time_since_last_transport: float = Utils.get_time() - time_when_last_transported
-	var transport_is_on_cooldown: bool = time_since_last_transport < TRANSPORT_CD
+#	NOTE: use tick-based calculation to avoid float precision
+#	drift in multiplayer.
+	var transport_cd_ticks: int = Utils.time_to_ticks(TRANSPORT_CD)
+	var current_tick: int = Utils.get_current_tick()
+	var ticks_since_last_transport: int = current_tick - tick_when_last_transported
+	var transport_is_on_cooldown: bool = ticks_since_last_transport < transport_cd_ticks
 
 	if transport_is_on_cooldown:
 		return
 
-	time_when_last_transported = Utils.get_time()
+	tick_when_last_transported = current_tick
 
 	var aoe_dmg: float = FIELD_DAMAGE + FIELD_DAMAGE_ADD * tower.get_level()
 	tower.do_spell_damage_aoe(sum.from_pos, FIELD_RADIUS, aoe_dmg, tower.calc_spell_crit_no_bonus(), 0.0)
@@ -120,7 +121,8 @@ func on_autocast_recreation(event: Event):
 	var target_pos_is_on_path: bool = Utils.is_point_on_creep_path(target_pos, tower.get_player())
 
 	if !target_pos_is_on_path:
-		tower.get_player().display_small_floating_text("Invalid location!", tower, Color8(255, 150, 0), 30)
+		var invalid_location_text: String = tr("FFW7")
+		tower.get_player().display_small_floating_text(invalid_location_text, tower, Color8(255, 150, 0), 30)
 
 		return
 
@@ -168,7 +170,7 @@ func it_hunger_ability():
 
 	if sum.size < 10.0:
 #		700% cap
-		tower.modify_property(Modification.Type.MOD_SPELL_DAMAGE_DEALT, mod)
+		tower.modify_property(ModificationType.enm.MOD_SPELL_DAMAGE_DEALT, mod)
 		sum.size += mod
 
 	if sum.size < 3.7:

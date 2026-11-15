@@ -111,9 +111,17 @@ func _switch_to_match_list_when_connected():
 	
 	var connection_state: NakamaConnection.State = NakamaConnection.get_state()
 	
-	if connection_state == NakamaConnection.State.CONNECTED:
-		_title_screen.switch_to_tab(TitleScreen.Tab.ONLINE_MATCH_LIST)
+#	NOTE: need to switch to online match list even if failed
+#	to connect so that LAN multiplayer remains accessible
+#	when game can't connect to online server.
+	_title_screen.switch_to_tab(TitleScreen.Tab.ONLINE_MATCH_LIST)
+	
+	var connected_ok: bool = connection_state == NakamaConnection.State.CONNECTED
+
+	if connected_ok:
 		_refresh_match_list()
+	else:
+		_online_match_list_menu.set_state(OnlineMatchListMenu.State.FAILED_TO_CONNECT)
 
 
 func _get_host_user_id_for_match(match_: NakamaRTAPI.Match) -> String:
@@ -180,7 +188,7 @@ func _process_nakama_message_transfer_from_lobby(message: NakamaRTAPI.MatchData)
 	var leave_match_result: NakamaAsyncResult = await socket.leave_match_async(_lobby_match_id)
 	if leave_match_result.is_exception():
 		push_error("Error in leave_match_async rpc(): %s" % leave_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to transfer from lobby to game match.\n%s" % leave_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s.\n%s" % [tr("SETUP_ONLINE_ERROR_TRANSFER_FROM_LOBBY"), leave_match_result.exception.message])
 
 		return
 
@@ -245,7 +253,7 @@ func _on_create_online_match_menu_create_pressed():
 	var create_match_result: NakamaAsyncResult = await client.rpc_async(session, "create_match", match_params_string)
 	if create_match_result.is_exception():
 		push_error("Error in create_match rpc(): %s" % create_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to create match.\n%s" % create_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_CREATE_MATCH"), create_match_result.exception.message])
 
 		return
 	
@@ -255,7 +263,7 @@ func _on_create_online_match_menu_create_pressed():
 	var join_match_result: NakamaAsyncResult = await socket.join_match_async(lobby_match_id)
 	if join_match_result.is_exception():
 		push_error("Error in join_match_async rpc(): %s" % join_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to join match.\n%s" % join_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_JOIN_MATCH"), join_match_result.exception.message])
 
 		return
 	
@@ -302,7 +310,7 @@ func _on_online_match_list_menu_join_pressed(selected_match_id: String):
 	var join_match_result: NakamaAsyncResult = await socket.join_match_async(selected_match_id)
 	if join_match_result.is_exception():
 		push_error("Error in join_match_async rpc(): %s" % join_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to join match.\n%s" % join_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_JOIN_MATCH"), join_match_result.exception.message])
 
 		return
 
@@ -320,7 +328,7 @@ func _on_online_match_list_menu_join_pressed(selected_match_id: String):
 
 #	TODO: make it possible to recover from this error state
 	if match_config == null:
-		Utils.show_popup_message(self, "Error", "Failed to load match properties!")
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_ONLINE_ERROR_LOAD_MATCH_PROPS"))
 
 		return
 
@@ -341,7 +349,7 @@ func _on_online_lobby_menu_leave_pressed():
 	var leave_match_result: NakamaAsyncResult = await socket.leave_match_async(_lobby_match_id)
 	if leave_match_result.is_exception():
 		push_error("Error in leave_match_async(): %s" % leave_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to leave match.\n%s" % leave_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_LEAVE_MATCH"), leave_match_result.exception.message])
 
 		return
 	
@@ -392,7 +400,15 @@ func _on_peer_connected(_peer_id: int):
 		var team_mode: TeamMode.enm = _current_match_config.get_team_mode()
 		var origin_seed: int = randi()
 
-		_title_screen.start_game.rpc(PlayerMode.enm.MULTIPLAYER, game_length, game_mode, difficulty, team_mode, origin_seed, Globals.ConnectionType.NAKAMA)
+#		NOTE: build the authoritative peer list on the host
+#		(peer 1) and pass it to all clients, so every client
+#		sets up an identical player roster regardless of
+#		peer-discovery timing. See Globals._game_peer_id_list.
+		peer_id_list = [1]
+		peer_id_list.append_array(multiplayer.get_peers())
+		peer_id_list.sort()
+
+		_title_screen.start_game.rpc(PlayerMode.enm.MULTIPLAYER, game_length, game_mode, difficulty, team_mode, origin_seed, Globals.ConnectionType.NAKAMA, peer_id_list, {})
 
 
 func _on_host_created_game_match(game_match_id: String):
@@ -411,7 +427,7 @@ func _on_host_created_game_match(game_match_id: String):
 	var send_match_state_result: NakamaAsyncResult = await socket.send_match_state_async(_lobby_match_id, NakamaOpCode.TRANSFER_FROM_LOBBY, data)
 	if send_match_state_result.is_exception():
 		push_error("Error in send_match_state_async(): %s" % send_match_state_result)
-		Utils.show_popup_message(self, "Error", "Failed to communicate with players in lobby.\n%s" % send_match_state_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_COMMUNICATE_WITH_LOBBY"), send_match_state_result.exception.message])
  
 		return
 
@@ -420,7 +436,7 @@ func _on_host_created_game_match(game_match_id: String):
 	var leave_match_result: NakamaAsyncResult = await socket.leave_match_async(_lobby_match_id)
 	if leave_match_result.is_exception():
 		push_error("Error in leave_match_async rpc(): %s" % leave_match_result)
-		Utils.show_popup_message(self, "Error", "Failed to transfer from lobby to game match.\n%s" % leave_match_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("SETUP_ONLINE_ERROR_TRANSFER_FROM_LOBBY"), leave_match_result.exception.message])
 
 		return
 	
@@ -437,7 +453,7 @@ func _on_online_match_list_menu_refresh_pressed():
 func _on_multiplayer_button_pressed():
 	var running_on_desktop: bool = OS.has_feature("pc")
 	if !running_on_desktop:
-		Utils.show_popup_message(self, "Error", "Multiplayer is not available in browser. Please download the game.")
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), tr("SETUP_ONLINE_ERROR_IN_BROWSER"))
 	
 		return
 	
@@ -450,7 +466,16 @@ func _on_multiplayer_button_pressed():
 			_title_screen.switch_to_tab(TitleScreen.Tab.ONLINE_MATCH_LIST)
 			_refresh_match_list()
 		NakamaConnection.State.FAILED_TO_CONNECT:
-#			NOTE: if failed to connect previously, try again
-#			here
-			NakamaConnection.connect_to_server()
-			_switch_to_match_list_when_connected()
+			var online_multiplayer_is_enabled: bool = Config.enable_online_multiplayer()
+
+			if online_multiplayer_is_enabled:
+#				NOTE: if failed to connect previously, try again
+#				here
+				NakamaConnection.connect_to_server()
+				_switch_to_match_list_when_connected()
+			else:
+				# If online multiplayer is disabled, then
+				# instead of Title->Online->LAN
+				# go straight to LAN:
+				# Title->LAN
+				_title_screen.switch_to_tab(TitleScreen.Tab.LAN_CONNECT_MENU)

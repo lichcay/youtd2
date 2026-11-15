@@ -1,6 +1,14 @@
 extends Node
 
 
+# This class contains various functions which generate rich
+# texts for RichTextLabel's.
+
+
+#########################
+###       Public      ###
+#########################
+
 func get_tower_specials_text(tower_id: int) -> String:
 	var text: String = ""
 
@@ -8,9 +16,9 @@ func get_tower_specials_text(tower_id: int) -> String:
 	var attacks_ground_only: bool = attack_target_type.equals_to(Tower.TARGET_TYPE_GROUND_ONLY)
 	var attacks_air_only: bool = attack_target_type.equals_to(Tower.TARGET_TYPE_AIR_ONLY)
 	if attacks_ground_only:
-		text += "[color=RED]Attacks GROUND only[/color]\n"
+		text += "[color=RED]%s[/color]\n" % tr("TOWER_SPECIAL_ATTACKS_GROUND_ONLY")
 	elif attacks_air_only:
-		text += "[color=RED]Attacks AIR only[/color]\n"
+		text += "[color=RED]%s[/color]\n" % tr("TOWER_SPECIAL_ATTACKS_AIR_ONLY")
 
 	var specials_modifier: Modifier = TowerProperties.get_specials_modifier(tower_id)
 	var modifier_text: String = specials_modifier.get_tooltip_text()
@@ -31,7 +39,8 @@ func get_tower_multishot_text(tower_id: int) -> String:
 	if multishot_count <= 1:
 		return ""
 
-	var text: String = "Attacks up to [color=GOLD]%d[/color] targets at the same time.\n" % multishot_count
+	var text: String = tr("TOWER_MULTISHOT_TEXT").format({TARGET_COUNT = multishot_count})
+	text += "\n"
 
 	return text
 
@@ -49,8 +58,9 @@ func get_tower_splash_attack_text(tower_id: int) -> String:
 
 	for splash_range in splash_range_list:
 		var splash_ratio: float = splash_attack_map[splash_range]
-		var splash_percentage: int = floor(splash_ratio * 100)
-		text += "[color=GOLD]%d[/color] AoE: [color=GOLD]%d%%[/color] damage\n" % [splash_range, splash_percentage]
+		var splash_percentage: String = Utils.format_percent(splash_ratio, 0)
+		text += tr("TOWER_SPLASH_ATTACK_LINE").format({RANGE = splash_range, DAMAGE_RATIO = splash_percentage})
+		text += "\n"
 
 	return text
 
@@ -68,10 +78,11 @@ func get_tower_bounce_attack_text(tower_id: int) -> String:
 	
 	if bounce_multiplier != 0:
 		var bounce_dmg_percent: String = Utils.format_percent(bounce_multiplier, 0)
-		text = "[color=GOLD]%d[/color] targets\n" % bounce_count \
-		+ "[color=GOLD]-%s[/color] damage per bounce\n" % bounce_dmg_percent
+		text = tr("TOWER_BOUNCE_ATTACK_TEXT_NORMAL").format({BOUNCE_COUNT = bounce_count, DAMAGE_RATIO = bounce_dmg_percent})
+		text += "\n"
 	else:
-		text = "[color=GOLD]%d[/color] targets\n" % bounce_count
+		text = tr("TOWER_BOUNCE_ATTACK_TEXT_WITHOUT_DAMAGE_RATIO").format({BOUNCE_COUNT = bounce_count})
+		text += "\n"
 
 	return text
 
@@ -80,9 +91,9 @@ func get_research_text(element: Element.enm, player: Player) -> String:
 	var text: String = ""
 	
 	var current_element_level = player.get_element_level(element)
-	var reached_max_level: bool = current_element_level == Constants.MAX_ELEMENT_LEVEL
+	var reached_max_level: bool = current_element_level == player.get_max_element_level()
 	if reached_max_level:
-		return "Can't research any further.\n"
+		return tr("RESEARCH_ELEMENT_CANT_RESEARCH_FURTHER") + "\n"
 
 	var element_string: String = Element.convert_to_colored_string(element)
 	var flavor_text: String = Element.get_flavor_text(element)
@@ -94,17 +105,17 @@ func get_research_text(element: Element.enm, player: Player) -> String:
 
 	var explanation_text: String = ""
 	match Globals.get_game_mode():
-		GameMode.enm.BUILD: explanation_text = "Research next element level to unlock new towers of this element and to unlock upgrades for existing towers.\n"
-		GameMode.enm.RANDOM_WITH_UPGRADES: explanation_text = "Research next element level to unlock new towers of this element and to upgrade existing towers to higher tiers.\n"
-		GameMode.enm.TOTALLY_RANDOM: explanation_text = "Research next element level to unlock new towers of this element.\n"
+		GameMode.enm.BUILD: explanation_text = tr("RESEARCH_ELEMENT_EXPLANATION_FOR_BUILD")
+		GameMode.enm.RANDOM_WITH_UPGRADES: explanation_text = tr("RESEARCH_ELEMENT_EXPLANATION_FOR_RANDOM_WITH_UPGRADES")
+		GameMode.enm.TOTALLY_RANDOM: explanation_text = tr("RESEARCH_ELEMENT_EXPLANATION_FOR_TOTALLY_RANDOM")
 
-	text += "Research %s level %s\n" % [element_string, research_level] \
+	text += tr("RESEARCH_ELEMENT_INFO").format({ELEMENT = element_string, LEVEL = research_level}) + "\n" \
 	+ "[img=32x32]res://resources/icons/hud/knowledge_tome.tres[/img] %s\n" % cost_string \
 	+ " \n" \
-	+ explanation_text \
+	+ explanation_text + "\n" \
 	+ "[color=LIGHTBLUE]%s[/color]\n" % flavor_text \
 	+ " \n" \
-	+ "[color=GOLD]Main attack types:[/color] %s\n" % main_attack_types
+	+ "[color=GOLD]%s[/color] %s\n" % [tr("RESEARCH_ELEMENT_MAIN_ATTACK_TYPES"), main_attack_types]
 
 	return text
 
@@ -113,47 +124,11 @@ func get_research_level_label(element: Element.enm, player: Player) -> String:
 	var text: String = ""
 	
 	var current_element_level = player.get_element_level(element)
-	var max_element_level = Constants.MAX_ELEMENT_LEVEL
+	var max_element_level = player.get_max_element_level()
 	if current_element_level >= max_element_level:
-		text += " [color=GOLD]MAX[/color] "
+		text += " [color=GOLD]%s[/color] " % tr("RESEARCH_ELEMENT_LEVEL_MAX")
 	else:
 		text += "[color=GOLD]%s[/color]" % [current_element_level + 1]
-	
-	return text
-
-func get_creep_info(creep: Creep) -> String:
-	var text: String = ""
-
-	var health_string_colored: String = _get_creep_health_string(creep)
-	var mana: int = floor(creep.get_mana())
-	var overall_mana: int = floor(creep.get_overall_mana())
-
-	text += "[color=YELLOW]Health:[/color] %s\n" % [health_string_colored]
-	if overall_mana > 0:
-		text += "[color=YELLOW]Mana:[/color] [color=CORNFLOWER_BLUE]%d/%d[/color]\n" % [mana, overall_mana]
-
-	var category: CreepCategory.enm = creep.get_category()
-	var category_string: String = CreepCategory.convert_to_colored_string(category)
-	var creep_size: CreepSize.enm = creep.get_size()
-	var creep_size_string: String = CreepSize.convert_to_colored_string(creep_size)
-	var armor_type: ArmorType.enm = creep.get_armor_type()
-	var armor_type_string: String = ArmorType.convert_to_colored_string(armor_type)
-	var armor: float = creep.get_base_armor()
-	var armor_string: String = Utils.format_float(armor, 2)
-	var armor_bonus: float = creep.get_overall_armor_bonus()
-	
-	var armor_bonus_string: String
-	if armor_bonus > 0:
-		armor_bonus_string = "+%s" % Utils.format_float(armor_bonus, 2)
-	elif armor_bonus < 0:
-		armor_bonus_string = "%s" % Utils.format_float(armor_bonus, 2)
-	else:
-		armor_bonus_string = ""
-
-	text += "[color=YELLOW]Race:[/color] %s\n" % category_string
-	text += "[color=YELLOW]Size:[/color] %s\n" % creep_size_string
-	text += "[color=YELLOW]Armor type:[/color] %s\n" % armor_type_string
-	text += "[color=YELLOW]Armor:[/color] [color=GOLD]%s[/color] %s\n" % [armor_string, armor_bonus_string]
 	
 	return text
 
@@ -193,18 +168,20 @@ func get_tower_text(tower_id: int, player: Player) -> String:
 	text += "[b]%s[/b]\n" % display_name
 
 	if tome_cost != 0:
-		text += "[img=32x32]res://resources/icons/hud/gold.tres[/img] %s [img=32x32]res://resources/icons/hud/knowledge_tome.tres[/img] %s [img=32x32]res://resources/icons/hud/tower_food.tres[/img] [color=GOLD]%s[/color]\n" % [gold_cost_string, tome_cost_string, food_cost_string]
+		text += "[img=32x32]res://resources/icons/hud/gold.tres[/img] %s [img=32x32]res://resources/icons/hud/knowledge_tome.tres[/img] %s [img=32x32]res://resources/icons/hud/tower_food.tres[/img] %s\n" % [gold_cost_string, tome_cost_string, food_cost_string]
 	else:
-		text += "[img=32x32]res://resources/icons/hud/gold.tres[/img] %s [img=32x32]res://resources/icons/hud/tower_food.tres[/img] [color=GOLD]%s[/color]\n" % [gold_cost_string, food_cost_string]
+		text += "[img=32x32]res://resources/icons/hud/gold.tres[/img] %s [img=32x32]res://resources/icons/hud/tower_food.tres[/img] %s\n" % [gold_cost_string, food_cost_string]
 	
 	text += "[color=LIGHT_BLUE]%s[/color]\n" % description
-	text += "[color=YELLOW]Author:[/color] %s\n" % author
-	text += "[color=YELLOW]Element:[/color] %s\n" % element_string
+	text += "[color=YELLOW]%s[/color] %s\n" % [tr("TOWER_TOOLTIP_AUTHOR"), author]
+	text += "[color=YELLOW]%s[/color] %s\n" % [tr("TOWER_TOOLTIP_ELEMENT"), element_string]
 	if attack_enabled:
-		text += "[color=YELLOW]Attack:[/color] [color=GOLD]%d[/color] DPS, %s, [color=GOLD]%d[/color] range\n" % [dps, attack_type_string, attack_range]
+		text += tr("TOWER_TOOLTIP_ATTACK").format({DPS = dps, ATTACK_TYPE = attack_type_string, RANGE = attack_range})
+		text += "\n"
 
 	if mana > 0:
-		text += "[color=YELLOW]Mana:[/color] [color=CORNFLOWER_BLUE]%d[/color] ([color=CORNFLOWER_BLUE]+%d[/color]/sec)\n" % [mana, mana_regen]
+		text += tr("TOWER_TOOLTIP_MANA").format({MANA_MAX = mana, MANA_REGEN = mana_regen})
+		text += "\n"
 	
 	text += " \n"
 
@@ -217,31 +194,44 @@ func get_tower_text(tower_id: int, player: Player) -> String:
 	return text
 
 
-func get_tower_ability_text_short(tower_id: int) -> String:
+func get_tower_specials_and_extra_text(tower_id: int) -> String:
 	var text: String = ""
 
 	var specials_text: String = get_tower_specials_text(tower_id)
 	if !specials_text.is_empty():
-		text += "[color=GOLD]Specials[/color]\n" \
+		text += "[color=GOLD]%s[/color]\n" % tr("TOWER_SPECIALS_TITLE") \
 		+ specials_text \
 		+ " \n"
 
 	var splash_text: String = get_tower_splash_attack_text(tower_id)
 	if !splash_text.is_empty():
-		text += "[color=GOLD]Splash Attack[/color]\n" \
+		text += "[color=GOLD]%s[/color]\n" % tr("TOWER_SPLASH_ATTACK_TITLE") \
 		+ splash_text \
 		+ " \n"
 
 	var bounce_text: String = get_tower_bounce_attack_text(tower_id)
 	if !bounce_text.is_empty():
-		text += "[color=GOLD]Bounce Attack[/color]\n" \
+		text += "[color=GOLD]%s[/color]\n" % tr("TOWER_BOUNCE_ATTACK_TITLE") \
 		+ bounce_text \
 		+ " \n"
 
 	var multishot_text: String = get_tower_multishot_text(tower_id)
 	if !multishot_text.is_empty():
-		text += "[color=GOLD]Multishot[/color]\n" \
+		text += "[color=GOLD]%s[/color]\n" % tr("TOWER_MULTISHOT_TITLE") \
 		+ multishot_text \
+		+ " \n"
+
+	text = text.trim_suffix(" \n")
+
+	return text
+
+
+func get_tower_ability_text_short(tower_id: int) -> String:
+	var text: String = ""
+
+	var specials_and_extra_text: String = get_tower_specials_and_extra_text(tower_id)
+	if !specials_and_extra_text.is_empty():
+		text += specials_and_extra_text \
 		+ " \n"
 
 	var ability_id_list: Array = TowerProperties.get_ability_id_list(tower_id)
@@ -252,6 +242,10 @@ func get_tower_ability_text_short(tower_id: int) -> String:
 
 	var aura_id_list: Array = TowerProperties.get_aura_id_list(tower_id)
 	for aura_id in aura_id_list:
+		var aura_is_hidden: bool = AuraProperties.get_is_hidden(aura_id)
+		if aura_is_hidden:
+			continue
+
 		var aura_text: String = get_aura_text_short(aura_id)
 		text += aura_text \
 		+ " \n"
@@ -284,11 +278,10 @@ func get_tower_requirements_text(tower_id: int, player: Player) -> String:
 	var element_level_string: String = get_colored_requirement_number(required_element_level, element_level_ok)
 
 	var element: Element.enm = TowerProperties.get_element(tower_id)
-	var element_string: String = Element.convert_to_string(element)
+	var element_string: String = Element.get_display_string(element)
 
-	text += "[color=GOLD][b]Requirements[/b][/color]\n" \
-	+ "Wave level: %s\n" % wave_level_string \
-	+ "%s research level: %s\n" % [element_string.capitalize(), element_level_string]
+	text += tr("TOWER_TOOLTIP_REQUIREMENTS").format({WAVE_LEVEL = wave_level_string, ELEMENT = element_string, ELEMENT_LEVEL = element_level_string})
+	text += "\n"
 	
 	return text
 
@@ -306,19 +299,18 @@ func get_item_text(item: Item) -> String:
 	var author: String = ItemProperties.get_author(item_id)
 	var is_oil: bool = ItemProperties.get_is_oil(item_id)
 	var is_consumable: bool = ItemProperties.is_consumable(item_id)
-	var is_disabled: bool = Item.disabled_item_list.has(item_id)
 
 	var specials_text: String = item.get_specials_tooltip_text()
 	specials_text = add_color_to_numbers(specials_text)
 
 	text += "[b]%s[/b]\n" % display_name_colored \
 	+ "[color=LIGHT_BLUE]%s[/color]\n" % description \
-	+ "[color=YELLOW]Level:[/color] %s\n" % level \
-	+ "[color=YELLOW]Author:[/color] %s\n" % author \
+	+ "[color=YELLOW]%s[/color] %s\n" % [tr("ITEM_TOOLTIP_LEVEL"), level] \
+	+ "[color=YELLOW]%s[/color] %s\n" % [tr("TOWER_TOOLTIP_AUTHOR"), author] \
 	+ " \n"
 
 	if !specials_text.is_empty():
-		text += "[color=YELLOW]Effects:[/color]\n" \
+		text += "[color=YELLOW]%s[/color]\n" % tr("ITEM_TOOLTIP_EFFECTS") \
 		+ specials_text \
 		+ " \n"
 
@@ -330,6 +322,10 @@ func get_item_text(item: Item) -> String:
 
 	var aura_id_list: Array = ItemProperties.get_aura_id_list(item_id)
 	for aura_id in aura_id_list:
+		var aura_is_hidden: bool = AuraProperties.get_is_hidden(aura_id)
+		if aura_is_hidden:
+			continue
+
 		var aura_text: String = get_aura_text_short(aura_id)
 		text += aura_text \
 		+ " \n"
@@ -347,21 +343,17 @@ func get_item_text(item: Item) -> String:
 		
 		var can_use_auto_mode: bool = Autocast.can_use_auto_mode_for_id(autocast_id)
 		if can_use_auto_mode:
-			text += "[color=YELLOW]Shift Right Click to toggle automatic casting.[/color]\n"
+			text += "[color=YELLOW]%s[/color]\n" % tr("ITEM_TOOLTIP_TOGGLE_CAST")
 		
-		text += "[color=YELLOW]Right Click to use item.[/color]\n" \
+		text += "[color=YELLOW]%s[/color]\n" % tr("ITEM_TOOLTIP_USE_ITEM") \
 		+ " \n"
 
 	if is_consumable:
-		text += "[color=ORANGE]Right Click to use item. Item is consumed after use.[/color]\n" \
+		text += "[color=ORANGE]%s[/color]\n" % tr("ITEM_TOOLTIP_USE_CONSUMABLE") \
 		+ " \n"
 
 	if is_oil:
-		text += "[color=ORANGE]Use oil on a tower to alter it permanently. The effects stay when the tower is transformed or upgraded![/color]\n" \
-		+ " \n"
-
-	if is_disabled:
-		text += "[color=RED]THIS ITEM IS DISABLED[/color]\n" \
+		text += "[color=ORANGE]%s[/color]\n" % tr("ITEM_TOOLTIP_USE_OIL") \
 		+ " \n"
 
 	text = text.trim_suffix(" \n")
@@ -457,28 +449,52 @@ func get_ability_text_short(ability_id: int) -> String:
 	return text
 
 
+func get_ability_text_long(ability_id: int) -> String:
+	var ability_name: String = AbilityProperties.get_ability_name(ability_id)
+	var description: String = AbilityProperties.get_description_long(ability_id)
+	description = add_color_to_numbers(description)
+
+	var text: String = ""
+	text += "[color=GOLD]%s[/color]\n" % ability_name
+	text += "%s\n" % description
+
+	return text
+
+
 func get_aura_text_short(aura_id: int) -> String:
 	var aura_name: String = AuraProperties.get_aura_name(aura_id)
 	var description: String = AuraProperties.get_description_short(aura_id)
 	description = add_color_to_numbers(description)
 
 	var text: String = ""
-	text += "[color=GOLD]%s - Aura[/color]\n" % aura_name
+	text += "[color=GOLD]%s - %s[/color]\n" % [aura_name, tr("AURA_WORD_IN_TITLE")]
 	text += "%s\n" % description
 
 	return text
 
 
-func get_autocast_text_long(autocast: Autocast) -> String:
-	var autocast_name: String = autocast.get_autocast_name()
-	var autocast_description_long: String = autocast.get_description_long()
+func get_aura_text_long(aura_id: int) -> String:
+	var aura_name: String = AuraProperties.get_aura_name(aura_id)
+	var description: String = AuraProperties.get_description_long(aura_id)
+	description = add_color_to_numbers(description)
+
+	var text: String = ""
+	text += "[color=GOLD]%s - %s[/color]\n" % [aura_name, tr("AURA_WORD_IN_TITLE")]
+	text += "%s\n" % description
+
+	return text
+
+
+func get_autocast_text_long(autocast_id: int) -> String:
+	var autocast_name: String = AutocastProperties.get_autocast_name(autocast_id)
+	var autocast_description_long: String = AutocastProperties.get_description_long(autocast_id)
 	autocast_description_long = add_color_to_numbers(autocast_description_long)
-	var stats_text: String = get_autocast_stats_text(autocast)
+	var stats_text: String = get_autocast_stats_text(autocast_id)
 
 	var text: String = ""
 	text += "[color=GOLD]%s[/color]\n" % autocast_name
-	text += " \n"
 	text += "%s\n" % autocast_description_long
+	text += " \n"
 	text += "%s\n" % stats_text
 
 	return text
@@ -488,11 +504,12 @@ func get_autocast_text_short(autocast_id: int) -> String:
 	var autocast_name: String = AutocastProperties.get_autocast_name(autocast_id)
 	var autocast_description_short: String = AutocastProperties.get_description_short(autocast_id)
 	autocast_description_short = add_color_to_numbers(autocast_description_short)
-	var stats_text: String = get_autocast_stats_text_from_autocast_id(autocast_id)
+	var stats_text: String = get_autocast_stats_text(autocast_id)
 
 	var text: String = "[color=GOLD]%s[/color]\n" % autocast_name \
 	+ "%s\n" % autocast_description_short \
-	+ "%s\n" % stats_text
+	+ " \n" \
+	+ "%s" % stats_text
 
 	return text
 
@@ -500,40 +517,25 @@ func get_autocast_text_short(autocast_id: int) -> String:
 func get_autocast_tooltip(autocast: Autocast) -> String:
 	var text: String = ""
 
-	text += RichTexts.get_autocast_text_long(autocast)
+	text += RichTexts.get_autocast_text_long(autocast.get_id())
 	text += " \n"
 
 	if autocast.can_use_auto_mode():
-		text += "[color=YELLOW]Right Click to toggle automatic casting on and off[/color]\n"
+		text += "[color=YELLOW]%s[/color]\n" % tr("AUTOCAST_TOOLTIP_TOGGLE_CAST")
 		text += " \n"
 
-	text += "[color=YELLOW]Left Click to cast ability[/color]\n"
+	text += "[color=YELLOW]%s[/color]\n" % tr("AUTOCAST_TOOLTIP_CAST")
 
 	return text
 
 
-func get_autocast_stats_text(autocast: Autocast) -> String:
-	var mana_cost: int = autocast.get_mana_cost()
-	var cast_range: float = autocast.get_cast_range()
-	var cooldown: float = autocast.get_cooldown()
-	var text: String = get_autocast_stats_text_helper(mana_cost, cast_range, cooldown)
-
-	return text
-
-
-func get_autocast_stats_text_from_autocast_id(autocast_id: int) -> String:
+func get_autocast_stats_text(autocast_id: int) -> String:
 	var mana_cost: int = AutocastProperties.get_mana_cost(autocast_id)
 	var cast_range: float = AutocastProperties.get_cast_range(autocast_id)
 	var cooldown: float = AutocastProperties.get_cooldown(autocast_id)
-	var text: String = get_autocast_stats_text_helper(mana_cost, cast_range, cooldown)
-
-	return text
-
-
-func get_autocast_stats_text_helper(mana_cost: int, cast_range: float, cooldown: float) -> String:
-	var mana_cost_string: String = "Mana cost: %s" % str(mana_cost)
-	var cast_range_string: String = "%s range" % str(cast_range)
-	var cooldown_string: String = "%ss cooldown" % str(cooldown)
+	var mana_cost_string: String = tr("AUTOCAST_TOOLTIP_MANA_COST").format({MANA_COST = str(mana_cost)})
+	var cast_range_string: String = tr("AUTOCAST_TOOLTIP_RANGE").format({RANGE = str(cast_range)})
+	var cooldown_string: String = tr("AUTOCAST_TOOLTIP_COOLDOWN").format({COOLDOWN = str(cooldown)})
 
 	var text: String = ""
 
@@ -546,13 +548,16 @@ func get_autocast_stats_text_helper(mana_cost: int, cast_range: float, cooldown:
 		stats_list.append(cooldown_string)
 
 	if !stats_list.is_empty():
-		var stats_line: String = ", ".join(stats_list) + "\n";
+		var stats_line: String = ", ".join(stats_list)
 		stats_line = add_color_to_numbers(stats_line)
-		text += " \n"
-		text += stats_line
+		text += "%s\n" % stats_line
 
 	return text
 
+
+#########################
+###      Private      ###
+#########################
 
 func _get_creep_health_string(creep: Creep) -> String:
 	var health_color: Color

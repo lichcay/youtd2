@@ -6,16 +6,12 @@ extends ItemBehavior
 # targets.
 
 
-func load_modifier(modifier: Modifier):
-	modifier.add_modification(Modification.Type.MOD_ATTACKSPEED, 0.08, 0.002)
-
-
 func load_triggers(triggers: BuffType):
 	triggers.add_event_on_attack(on_attack)
 
 
 func load_specials(modifier: Modifier):
-	modifier.add_modification(Modification.Type.MOD_DMG_TO_MAGIC, 0.10, 0.01)
+	modifier.add_modification(ModificationType.enm.MOD_DMG_TO_MAGIC, 0.10, 0.01)
 
 
 func on_attack(_event: Event):

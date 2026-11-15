@@ -301,6 +301,20 @@ func get_wisdom_upgrade_count_for_player_level(player_level: int) -> int:
 	return upgrade_count
 
 
+# returns an additive bonus to wisdom multiplier
+func get_wisdom_multiplier_bonus_from_upgrades(wisdom_upgrades: Dictionary) -> float:
+	var player_level: int = Utils.get_local_player_level()
+	var wisdom_multiplier_bonus: float = 0.0
+	if wisdom_upgrades[WisdomUpgradeProperties.Id.ADVANCED_SYNERGY]:
+		wisdom_multiplier_bonus += 0.06
+	
+	if wisdom_upgrades[WisdomUpgradeProperties.Id.THE_PATH_OF_ASCENSION]:
+		var levels_spent = wisdom_upgrades.values().count(true) / Constants.PLAYER_LEVEL_TO_WISDOM_UPGRADE_COUNT
+		var levels_left: int = int(player_level - levels_spent)
+		wisdom_multiplier_bonus += 0.001 * levels_left
+	return wisdom_multiplier_bonus
+
+
 func get_local_player_level() -> int:
 	var exp_password: String = Settings.get_setting(Settings.EXP_PASSWORD)
 	var player_exp: int = ExperiencePassword.decode(exp_password)
@@ -396,7 +410,7 @@ func get_tower_at_position(position_wc3: Vector2) -> Tower:
 	return null
 
 
-# NOTE: Game.getGameTime() in JASS 
+# NOTE: Game.getGameTime() in JASS
 func get_time() -> float:
 	var game_time: Node = get_tree().get_root().get_node_or_null("GameScene/Gameplay/GameTime")
 
@@ -404,10 +418,25 @@ func get_time() -> float:
 		push_warning("game_time is null. You can ignore this warning during game restart.")
 
 		return 0.0
-	
+
 	var time: float = game_time.get_time()
 
 	return time
+
+
+# Returns current game tick. Used for deterministic calculations
+# in multiplayer to avoid float precision drift issues.
+func get_current_tick() -> int:
+	var game_client: Node = get_tree().get_root().get_node_or_null("GameScene/Gameplay/GameClient")
+
+	if game_client == null:
+		push_warning("game_client is null. You can ignore this warning during game restart.")
+
+		return 0
+
+	var tick: int = game_client.get_current_tick()
+
+	return tick
 
 
 # Returns current time of day in the game world, in hours.
@@ -654,7 +683,10 @@ func random_weighted_pick(rng: RandomNumberGenerator, element_to_weight_map: Dic
 
 	var pair_list: Array = []
 
-	for element in element_to_weight_map.keys():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_element_keys: Array = element_to_weight_map.keys()
+	sorted_element_keys.sort()
+	for element in sorted_element_keys:
 		var weight: float = element_to_weight_map[element]
 		var pair: Array = [element, weight]
 
@@ -680,7 +712,8 @@ func random_weighted_pick(rng: RandomNumberGenerator, element_to_weight_map: Dic
 
 	push_error("Failed to generate random element")
 
-	return element_to_weight_map.keys()[0]
+#	NOTE: return first sorted element for determinism
+	return sorted_element_keys[0]
 
 
 # Use this in cases where script stores references to units
@@ -708,7 +741,7 @@ func rand_chance(rng: RandomNumberGenerator, chance: float) -> bool:
 
 # NOTE: this f-n extends the range slightly from the center
 # of target unit
-func get_units_in_range(caster: Unit, type: TargetType, center: Vector2, radius: float, include_invisible: bool = false) -> Array[Unit]:
+func get_units_in_range(caster: Unit, type: TargetType, center: Vector2, radius: float) -> Array[Unit]:
 	if type == null:
 		return []
 
@@ -745,12 +778,6 @@ func get_units_in_range(caster: Unit, type: TargetType, center: Vector2, radius:
 		if !unit_is_in_range:
 			continue
 
-		if unit is Creep:
-			var creep: Creep = unit as Creep
-
-			if creep.is_invisible() && !include_invisible:
-				continue
-
 		if player_towers_is_set:
 			var player_match: bool = caster.get_player() == unit.get_player()
 
@@ -758,6 +785,8 @@ func get_units_in_range(caster: Unit, type: TargetType, center: Vector2, radius:
 				continue
 
 		filtered_unit_list.append(unit)
+
+	Utils.sort_objects_for_multiplayer(filtered_unit_list)
 
 	return filtered_unit_list
 
@@ -773,7 +802,13 @@ class DistanceSorter:
 		var distance_a: float = a_pos.distance_squared_to(origin)
 		var b_pos: Vector2 = b.get_position_wc3_2d()
 		var distance_b: float = b_pos.distance_squared_to(origin)
-		var less_than: bool = distance_a < distance_b
+
+		# Use UID as tiebreaker for deterministic sorting when distances are equal
+		var less_than: bool
+		if absf(distance_a - distance_b) < 0.01:
+			less_than = a.get_uid() < b.get_uid()
+		else:
+			less_than = distance_a < distance_b
 
 		return less_than
 
@@ -807,7 +842,11 @@ class AttackTargetSorter:
 			var b_pos: Vector2 = b.get_position_wc3_2d()
 			var distance_b: float = b_pos.distance_to(origin)
 
-			less_than = distance_a < distance_b
+			# Use UID as tiebreaker for deterministic sorting when distances are equal
+			if absf(distance_a - distance_b) < 0.01:
+				less_than = a.get_uid() < b.get_uid()
+			else:
+				less_than = distance_a < distance_b
 		else:
 			less_than = level_a < level_b
 
@@ -905,16 +944,20 @@ func get_tower_list() -> Array[Tower]:
 		var tower: Tower = tower_node as Tower
 		tower_list.append(tower)
 
+	Utils.sort_objects_for_multiplayer(tower_list)
+
 	return tower_list
 
 
 func get_creep_list() -> Array[Creep]:
-	var tower_node_list: Array[Node] = get_tree().get_nodes_in_group("creeps")
+	var creep_node_list: Array[Node] = get_tree().get_nodes_in_group("creeps")
 	var creep_list: Array[Creep] = []
 
-	for creep_node in tower_node_list:
+	for creep_node in creep_node_list:
 		var creep: Creep = creep_node as Creep
 		creep_list.append(creep)
+
+	Utils.sort_objects_for_multiplayer(creep_list)
 
 	return creep_list
 
@@ -1034,3 +1077,38 @@ func get_scale_from_grows(sprite_scale_min: float, sprite_scale_max: float, curr
 	var current_scale: float = 1.0 + (scale_max - 1.0) *grow_ratio
 
 	return current_scale
+
+
+# Sort objects by UID to ensure deterministic iteration
+# order. Default order from Godot cannot be relied upon.
+# 
+# NOTE: the objects in the list must implement get_uid()
+# 
+# NOTE: only sort if the game is actually in multiplayer.
+# Skip sorting for singleplayer because sorting reduces FPS
+# by a lot on high gamespeeds. Specifically for timer and
+# projectile objects.
+# 
+# NOTE: must use custom UID system instead of Godot's
+# built-in get_instance_id(). get_instance_id() doesn't have
+# reliable order.
+func sort_objects_for_multiplayer(object_list: Array):
+	var player_mode: PlayerMode.enm = Globals.get_player_mode()
+	var is_multiplayer: bool = player_mode == PlayerMode.enm.MULTIPLAYER
+
+	if is_multiplayer:
+		object_list.sort_custom(func(a, b): return a.get_uid() < b.get_uid())
+
+
+# Converts time in seconds to game ticks
+func time_to_ticks(time: float) -> int:
+	var ticks: int = roundi(time * GameClient.TICKS_PER_SECOND)
+
+	return ticks
+
+
+# Converts time in seconds to game ticks
+func ticks_to_time(ticks: int) -> float:
+	var time: float = ticks * 1.0 / GameClient.TICKS_PER_SECOND
+
+	return time

@@ -66,7 +66,7 @@ func _ready():
 
 	_target.death.connect(_on_target_death)
 	_target.kill.connect(_on_target_kill)
-	_target.level_up.connect(_on_target_level_up)
+	_target.level_changed.connect(_on_target_level_changed)
 	_target.attack.connect(_on_target_attack)
 	_target.attacked.connect(_on_target_attacked)
 	_target.dealt_damage.connect(_on_target_dealt_damage)
@@ -155,10 +155,13 @@ func get_periodic_timers() -> Dictionary:
 # buff. Used by items to preserve timers of items when they
 # are removed from towers.
 func inherit_periodic_timers(inherited_timers: Dictionary):
-	for handler in _periodic_timer_map.keys():
+#	NOTE: sort keys to ensure deterministic iteration order for multiplayer sync
+	var sorted_handler_keys: Array = _periodic_timer_map.keys()
+	sorted_handler_keys.sort()
+	for handler in sorted_handler_keys:
 		if !inherited_timers.has(handler):
 			continue
-		
+
 #		Remove existing timer
 		var existing_timer: ManualTimer = _periodic_timer_map[handler]
 		remove_child(existing_timer)
@@ -361,10 +364,10 @@ func _on_target_kill(event: Event):
 	_call_event_handler_list(Event.Type.KILL, event)
 
 
-func _on_target_level_up(level_increased: bool):
+func _on_target_level_changed(level_increased: bool):
 	var event: Event = _make_buff_event(_target)
-	event._is_level_up = level_increased
-	_call_event_handler_list(Event.Type.LEVEL_UP, event)
+	event._level_increased_during_event = level_increased
+	_call_event_handler_list(Event.Type.LEVEL_CHANGED, event)
 
 
 func _on_target_attack(event: Event):

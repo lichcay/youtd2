@@ -36,26 +36,26 @@ func tower_init():
 
 	sapper_bt = BuffType.new("sapper_bt", 3, 0, false, self)
 	var cedi_goblin_sapper_mod: Modifier = Modifier.new()
-	cedi_goblin_sapper_mod.add_modification(Modification.Type.MOD_MOVESPEED, 0.0, -0.001)
+	cedi_goblin_sapper_mod.add_modification(ModificationType.enm.MOD_MOVESPEED, 0.0, -0.001)
 	sapper_bt.set_buff_modifier(cedi_goblin_sapper_mod)
 	sapper_bt.set_buff_icon("res://resources/icons/generic_icons/barefoot.tres")
 	sapper_bt.set_buff_tooltip(tr("SBOV"))
 
 	robot_bt = BuffType.new("robot_bt", 5, 0, true, self)
 	var cedi_goblin_robot_mod: Modifier = Modifier.new()
-	cedi_goblin_robot_mod.add_modification(Modification.Type.MOD_DAMAGE_ADD_PERC, 0.0, 0.001)
-	cedi_goblin_robot_mod.add_modification(Modification.Type.MOD_ATTACKSPEED, 0.0, 0.001)
+	cedi_goblin_robot_mod.add_modification(ModificationType.enm.MOD_DAMAGE_ADD_PERC, 0.0, 0.001)
+	cedi_goblin_robot_mod.add_modification(ModificationType.enm.MOD_ATTACKSPEED, 0.0, 0.001)
 	robot_bt.set_buff_modifier(cedi_goblin_robot_mod)
 	robot_bt.set_buff_icon("res://resources/icons/generic_icons/cog.tres")
-	robot_bt.set_special_effect("res://src/effects/holy_bolt.tscn", 200, 5.0)
+	robot_bt.set_special_effect("res://src/effects/holy_bolt.tscn", 100, 1.0)
 	robot_bt.set_buff_tooltip(tr("ZENW"))
 
 	emitter_bt = BuffType.new("emitter_bt", 5, 0, true, self)
 	var cedi_goblin_emitter_mod: Modifier = Modifier.new()
-	cedi_goblin_emitter_mod.add_modification(Modification.Type.MOD_TRIGGER_CHANCES, 0.0, 0.001)
+	cedi_goblin_emitter_mod.add_modification(ModificationType.enm.MOD_TRIGGER_CHANCES, 0.0, 0.001)
 	emitter_bt.set_buff_modifier(cedi_goblin_emitter_mod)
 	emitter_bt.set_buff_icon("res://resources/icons/generic_icons/azul_flake.tres")
-	emitter_bt.set_special_effect("res://src/effects/frost_bolt_missile.tscn", 200, 5.0)
+	emitter_bt.set_special_effect("res://src/effects/frost_bolt_missile.tscn", 100, 1.0)
 	emitter_bt.set_buff_tooltip(tr("KB5O"))
 
 
@@ -115,8 +115,8 @@ func sapper_pt_on_hit(projectile: Projectile, target: Unit):
 	if tower == null:
 		return
 
-	var floating_text: String = "%d%% slow" % (slow_buff_level / 10) 
-	tower.get_player().display_small_floating_text(floating_text, target, Color8(100, 100, 255), 40)
+	var slow_text: String = tr("EMCY") % (slow_buff_level / 10) 
+	tower.get_player().display_small_floating_text(slow_text, target, Color8(100, 100, 255), 40)
 
 	Effect.add_special_effect("res://src/effects/frag_boom_spawn.tscn", Vector2(projectile.get_x(), projectile.get_y()))
 
@@ -144,8 +144,8 @@ func robot_pt_on_hit(_projectile: Projectile, target: Unit):
 
 	robot_bt.apply(tower, target, buff_level)
 
-	var floating_text: String = "%d%% AS and DMG" % (buff_level / 10) 
-	tower.get_player().display_small_floating_text(floating_text, target, Color8(100, 255, 100), 40)
+	var attackspeed_and_dmg_text: String = tr("F7DM") % (buff_level / 10) 
+	tower.get_player().display_small_floating_text(attackspeed_and_dmg_text, target, Color8(100, 255, 100), 40)
 
 
 func emitter_pt_on_hit(_projectile: Projectile, target: Unit):
@@ -160,5 +160,5 @@ func emitter_pt_on_hit(_projectile: Projectile, target: Unit):
 
 	emitter_bt.apply(tower, target, buff_level)
 
-	var floating_text: String = "%d%% Trigger Chance" % (buff_level / 10) 
-	tower.get_player().display_small_floating_text(floating_text, target, Color8(100, 255, 100), 40)
+	var trigger_chances_text: String = tr("R735") % (buff_level / 10) 
+	tower.get_player().display_small_floating_text(trigger_chances_text, target, Color8(100, 255, 100), 40)

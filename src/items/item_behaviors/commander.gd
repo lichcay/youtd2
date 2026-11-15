@@ -13,7 +13,7 @@ func item_init():
 	attack_bt.set_buff_icon("res://resources/icons/generic_icons/hammer_drop.tres")
 	attack_bt.set_buff_tooltip(tr("W1NC"))
 	var mod: Modifier = Modifier.new() 
-	mod.add_modification(Modification.Type.MOD_ATTACKSPEED, 0.50, 0) 
+	mod.add_modification(ModificationType.enm.MOD_ATTACKSPEED, 0.50, 0) 
 	attack_bt.set_buff_modifier(mod) 
 
 
@@ -27,7 +27,8 @@ func on_attack(_event: Event):
 	if tower.calc_chance(speed * (0.02 + 0.001 * tower.get_level())):
 		CombatLog.log_item_ability(item, null, "Attack!")
 		
-		spieler.display_floating_text("Attack!", tower, Color8(255, 0, 0))
+		var attack_text: String = tr("HY2D")
+		spieler.display_floating_text(attack_text, tower, Color8(255, 0, 0))
 		Effect.create_simple_at_unit_attached("res://src/effects/roar.tscn", tower, Unit.BodyPart.ORIGIN)
 		in_range = Iterate.over_units_in_range_of_caster(tower, TargetType.new(TargetType.TOWERS), 350)
 

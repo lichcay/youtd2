@@ -100,8 +100,11 @@ func _ready():
 # 	Save the seed which host gave to this client so that rng
 # 	on this game client is the same as on all other clients.
 	Globals.synced_rng.set_seed(origin_seed)
-	
+
 	print_verbose("Origin seed to: ", origin_seed)
+
+#	NOTE: ensure object UID counters are statically reset between sessions
+	UidMaxTracker.reset()
 
 	_setup_players()
 	PlayerManager.send_players_created_signal()
@@ -281,15 +284,13 @@ func _save_player_exp_on_quit():
 
 
 func _setup_players():
+#	NOTE: use the authoritative peer list provided by the host
+#	instead of multiplayer.get_peers().
+#	 See Globals._game_peer_id_list.
 	var peer_id_list: Array[int] = []
-	var local_peer_id: int = multiplayer.get_unique_id()
-	peer_id_list.append(local_peer_id)
-	var remote_peer_id_list: PackedInt32Array = multiplayer.get_peers()
-	for peer_id in remote_peer_id_list:
-		peer_id_list.append(peer_id)
+	peer_id_list.assign(Globals.get_game_peer_id_list())
 
-#	NOTE: create players in the order of peer id's to ensure determinism
-	peer_id_list.sort()
+	print_verbose("[desync-debug] _setup_players peer_id_list=%s (local peer %d)" % [str(peer_id_list), multiplayer.get_unique_id()])
 	
 #	Create teams
 	var team_mode: TeamMode.enm = Globals.get_team_mode()
@@ -794,7 +795,7 @@ func _on_player_selected_builder():
 	var difficulty: Difficulty.enm = Globals.get_difficulty()
 	var game_mode: GameMode.enm = Globals.get_game_mode()
 	var difficulty_string: String = Difficulty.convert_to_colored_string(difficulty)
-	var game_mode_string: String = GameMode.convert_to_display_string(game_mode).capitalize()
+	var game_mode_string: String = GameMode.convert_to_display_string(game_mode)
 	var local_player: Player = PlayerManager.get_local_player()
 
 	Messages.add_normal(local_player, tr("MESSAGE_WELCOME_1"))
@@ -882,7 +883,6 @@ func _on_game_menu_quit_pressed():
 func _on_player_requested_quit_to_title():
 	_quit_to_title()
 
-
 func _quit_to_title():
 	_save_player_exp_on_quit()
 	_cleanup_all_objects()
@@ -893,7 +893,6 @@ func _quit_to_title():
 #	4.1->4.3 migration, for unknown reason.
 	var title_screen_scene: PackedScene = load("res://src/ui/title_screen/title_screen.tscn")
 	get_tree().change_scene_to_packed(title_screen_scene)
-
 
 func _on_tutorial_controller_tutorial_triggered(tutorial_id):
 #	NOTE: ignore tutorial triggers in build mode because

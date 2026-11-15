@@ -225,7 +225,7 @@ func get_attack_target_type(tower_id: int) -> TargetType:
 	return attack_target_type
 
 
-func get_multishot(tower_id: int) -> bool:
+func get_multishot(tower_id: int) -> int:
 	var string: String = _get_property(tower_id, CsvProperty.MULTISHOT)
 	var multishot: int
 	if !string.is_empty():
@@ -278,22 +278,7 @@ func get_specials_modifier(tower_id: int) -> Modifier:
 	if string.is_empty():
 		return Modifier.new()
 
-	var mod_string_list: Array = string.split("|")
-
-	var modifier: Modifier = Modifier.new()
-
-	for mod_string in mod_string_list:
-		var mod_params: PackedStringArray = mod_string.split(",")
-
-		if mod_params.size() != 3:
-			continue
-
-		var mod_type_string: String = mod_params[0]
-		var mod_type: Modification.Type = Modification.convert_string_to_mod(mod_type_string)
-		var value_base: float = mod_params[1].to_float()
-		var level_add: float = mod_params[2].to_float()
-
-		modifier.add_modification(mod_type, value_base, level_add)
+	var modifier: Modifier = Modifier.convert_from_string(string)
 
 	return modifier
 
@@ -611,10 +596,10 @@ func get_range_data_list(tower_id: int) -> Array[RangeData]:
 	var attack_enabled: bool = TowerProperties.get_attack_enabled(tower_id)
 	if attack_enabled:
 		var attack_range: float = TowerProperties.get_range(tower_id)
-		var ability_name_english: String = Constants.TOWER_ATTACK_ABILITY_NAME
+		var ability_name_english: String = Constants.TOWER_ATTACK_ABILITY_NAME_ENGLISH
 		var ability_target_type: TargetType = TargetType.new(TargetType.CREEPS)
 
-		var range_data: RangeData = RangeData.new(ability_name_english, attack_range, ability_target_type)
+		var range_data: RangeData = RangeData.new(ability_name_english, attack_range, ability_target_type, true)
 		range_data_list.append(range_data)
 
 	var ability_id_list: Array = TowerProperties.get_ability_id_list(tower_id)

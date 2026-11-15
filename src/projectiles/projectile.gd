@@ -21,6 +21,8 @@ const LIGHTNING_VISUAL_LIFETIME: float = 0.5
 # towers/creeps.
 const UNIT_Z_OFFSET: Vector3 = Vector3(0, 0, 60)
 
+var _uid: int = 0
+
 var _move_type: MoveType
 var _target_unit: Unit = null
 var _target_pos: Vector3 = Vector3.INF
@@ -40,6 +42,7 @@ var _acceleration: float = 0
 var _rotation: float = 0
 var _gravity: float
 var _explode_on_hit: bool = true
+var _expire_when_homing_ends: bool = true
 var _explode_on_expiration: bool = true
 var _initial_scale: Vector2
 var _tower_crit_count: int = 0
@@ -86,6 +89,8 @@ var user_real3: float = 0.0
 
 func _ready():
 	super()
+
+	_uid = UidMaxTracker.get_uid_max_and_increment(UidMaxTracker.Type.PROJECTILE)
 
 	_initial_scale = scale
 	_spawn_time = Utils.get_time()
@@ -318,6 +323,9 @@ func _update_normal(delta: float):
 
 				return
 
+			if _expire_when_homing_ends && _expiration_handler.is_valid():
+				_expiration_handler.call(self)
+
 			if _explode_on_hit:
 				_do_explosion_visual()
 
@@ -482,7 +490,13 @@ func _start_movement_normal(target_pos: Vector3, ignore_z: bool, expire_when_rea
 	var initial_direction: float = rad_to_deg(angle_to_target_pos)
 	set_direction(initial_direction)
 
-	if expire_when_reached:
+	if _is_homing:
+		_expire_when_homing_ends = expire_when_reached
+
+	# NOTE: only setup the expire timer if project is NOT
+	# homing. Because if it's homing, then it's not possible
+	# to estimate the travel time for a moving target.
+	if expire_when_reached && !_is_homing:
 		var travel_vector: Vector2 = target_pos_2d - from_pos_2d
 		var travel_distance: float = travel_vector.length()
 		var time_until_reached: float = Utils.divide_safe(travel_distance, get_speed(), 1.0)
@@ -702,6 +716,10 @@ func get_age() -> float:
 	var age: float = current_time - _spawn_time
 
 	return age
+
+
+func get_uid() -> int:
+	return _uid
 
 
 #########################

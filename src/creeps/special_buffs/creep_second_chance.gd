@@ -1,5 +1,8 @@
 class_name CreepSecondChance extends BuffType
 
+# NOTE: this special is not affected by silence, on purpose.
+# This is how it was in the original game.
+
 
 func _init(parent: Node):
 	super("creep_second_chance", 0, 0, true, parent)
@@ -21,7 +24,7 @@ func on_damaged(event: Event):
 		creep.set_health_over_max(life_after_heal)
 		var mana_to_subtract: float = creep.get_overall_mana() / 3
 		creep.subtract_mana(mana_to_subtract, false)
-		creep.get_player().display_floating_text("Second chance!", creep, Color.RED)
+		creep.get_player().display_floating_text(tr("CREEP_SPECIAL_SECOND_CHANCE"), creep, Color.RED)
 
 #		NOTE: this is how it works in original game. Need to
 #		modify lowest health so that the creep deals less

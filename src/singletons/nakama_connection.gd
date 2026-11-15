@@ -49,6 +49,13 @@ func connect_to_server():
 		
 		return
 
+	var online_multiplayer_is_enabled: bool = Config.enable_online_multiplayer()
+	if !online_multiplayer_is_enabled:
+		print_verbose("Skipping Nakama connection because online multiplayer is disabled.")
+		_set_state(NakamaConnection.State.FAILED_TO_CONNECT)
+		
+		return
+
 	_set_state(NakamaConnection.State.CONNECTING)
 
 # 	Create Nakama session by authenticating on the server
@@ -64,7 +71,7 @@ func connect_to_server():
 
 		if _session.is_exception():
 			push_error("Error in authenticate_device_async(): %s" % _session)
-			Utils.show_popup_message(self, "Error", "Failed to authenticate with server.\n%s" % _session.exception.message)
+			Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("ERROR_FAILED_TO_AUTHENTICATE"), _session.exception.message])
 			_set_state(NakamaConnection.State.FAILED_TO_CONNECT)
 			_session = null
 
@@ -82,7 +89,7 @@ func connect_to_server():
 
 	if update_account_async_result.is_exception():
 		push_error("Error in update_account_async(): %s" % update_account_async_result)
-		Utils.show_popup_message(self, "Error", "Failed to update display name on server.\n%s" % update_account_async_result.exception.message)
+		Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("ERROR_FAILED_TO_UPDATE_DISPLAY_NAME"), update_account_async_result.exception.message])
 		_set_state(NakamaConnection.State.FAILED_TO_CONNECT)
 		
 		return
@@ -94,7 +101,7 @@ func connect_to_server():
 		var connect_async_result: NakamaAsyncResult = await _socket.connect_async(_session)
 		if connect_async_result.is_exception():
 			push_error("Error in connect_async(): %s" % connect_async_result)
-			Utils.show_popup_message(self, "Error", "Failed to connect to server.\n%s" % connect_async_result.exception.message)
+			Utils.show_popup_message(self, tr("GENERIC_ERROR_TITLE"), "%s\n%s" % [tr("ERROR_FAILED_TO_CONNECT"), connect_async_result.exception.message])
 			_set_state(NakamaConnection.State.FAILED_TO_CONNECT)
 			_socket = null
 			

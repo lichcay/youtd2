@@ -62,6 +62,7 @@ class_name TowerDetails extends PanelContainer
 @export var _dmg_to_nature: Label
 @export var _dmg_to_orc: Label
 @export var _dmg_to_humanoid: Label
+@export var _dmg_to_challenge: Label
 
 # Damage to size
 @export var _dmg_to_mass: Label
@@ -69,6 +70,8 @@ class_name TowerDetails extends PanelContainer
 @export var _dmg_to_air: Label
 @export var _dmg_to_champion: Label
 @export var _dmg_to_boss: Label
+
+@export var _total_dmg_multiplier: Label
 
 # Details
 @export var _tower_details_label: RichTextLabel
@@ -180,10 +183,10 @@ func update_text():
 	var exp_for_next_level: int = Experience.get_exp_for_level(next_level)
 	
 	if _tower.reached_max_level():
-		_level_x_at_left.text = "MAX_LVL_REACHED"
+		_level_x_at_left.text = tr("MAX_LVL_REACHED")
 		_level_x_at_right.text = ""
 	else:
-		_level_x_at_left.text = tr("LEVEL_%S_AT") % str(next_level)
+		_level_x_at_left.text = tr("LEVEL_AT_LABEL").format({NEXT_LEVEL = next_level})
 		_level_x_at_right.text = TowerDetails.int_format(exp_for_next_level)
 
 # 	Mana
@@ -248,7 +251,10 @@ func update_text():
 
 	var dmg_to_humanoid: float = _tower.get_damage_to_humanoid()
 	_dmg_to_humanoid.text = Utils.format_percent(dmg_to_humanoid, 0)
-
+	
+	var dmg_to_challenge: float = _tower.get_damage_to_challenge()
+	_dmg_to_challenge.text = Utils.format_percent(dmg_to_challenge, 0)
+	
 #	Damage to size
 	var dmg_to_mass: float = _tower.get_damage_to_mass()
 	_dmg_to_mass.text = Utils.format_percent(dmg_to_mass, 0)
@@ -264,7 +270,10 @@ func update_text():
 
 	var dmg_to_boss: float = _tower.get_damage_to_boss()
 	_dmg_to_boss.text = Utils.format_percent(dmg_to_boss, 0)
-
+	
+	var total_dmg_multiplier: float = _tower.get_total_damage_multiplier()
+	_total_dmg_multiplier.text = Utils.format_percent(total_dmg_multiplier, 0)
+	
 #	Details
 	var tower_details_text: String = _get_tower_details_text(_tower)
 	_tower_details_label.clear()
@@ -280,7 +289,10 @@ func update_text():
 static func int_format(num: float) -> String:
 	# Determine the appropriate suffix for the number
 	var suffix = ""
-	if num >= 1_000_000_000_000:
+	if num >= 1_000_000_000_000_000:
+		num /= 1_000_000_000_000_000
+		suffix = "Q"
+	elif num >= 1_000_000_000_000:
 		num /= 1_000_000_000_000
 		suffix = "T"
 	elif num >= 1_000_000_000:
@@ -317,7 +329,10 @@ static func int_format(num: float) -> String:
 static func int_format_shortest(num: float) -> String:
 	# Determine the appropriate suffix for the number
 	var suffix = ""
-	if num >= 1_000_000_000_000:
+	if num >= 1_000_000_000_000_000:
+		num /= 1_000_000_000_000_000
+		suffix = "Q"
+	elif num >= 1_000_000_000_000:
 		num /= 1_000_000_000_000
 		suffix = "T"
 	elif num >= 1_000_000_000:
@@ -365,7 +380,7 @@ func _get_tower_details_text(tower: Tower) -> String:
 	var all_multiboard_list: Array[MultiboardValues] = item_multiboard_list
 	all_multiboard_list.insert(0, tower_multiboard)
 
-	text += "[color=GOLD]Tower Details:[/color]\n \n"
+	text += "[color=GOLD]%s[/color]\n \n" % tr("TOWER_DETAILS_TITLE")
 
 	text += "[table=2]"
 

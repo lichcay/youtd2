@@ -52,7 +52,8 @@ func periodic(_event: Event):
 
 	power_level = 0
 	engine_update_mana_use()
-	tower.get_player().display_floating_text("Power Level: 0", tower, Color8(50, 150, 100))
+	var power_level_text: String = tr("UQAM").format({POWER_LEVEL = 0})
+	tower.get_player().display_floating_text(power_level_text, tower, Color8(50, 150, 100))
 	stun_bt.apply_only_timed(tower, tower, 120)
 
 
@@ -70,7 +71,7 @@ func on_tower_details() -> MultiboardValues:
 func engine_update_mana_use():
 	var new_mana_degen: float = power_level * sqrt(powered_tower_count) * 10 / 100.0
 	var degen_delta: float = current_mana_degen - new_mana_degen
-	tower.modify_property(Modification.Type.MOD_MANA_REGEN_PERC, degen_delta)
+	tower.modify_property(ModificationType.enm.MOD_MANA_REGEN_PERC, degen_delta)
 	current_mana_degen = new_mana_degen
 
 
@@ -84,8 +85,8 @@ func steam_bt_on_create(event: Event):
 	buff.user_real = mod_value
 	powered_tower_count += 1
 	engine_update_mana_use()
-	buffed_tower.modify_property(Modification.Type.MOD_DAMAGE_ADD_PERC, mod_value)
-	buffed_tower.modify_property(Modification.Type.MOD_ATTACKSPEED, mod_value / 2.0)
+	buffed_tower.modify_property(ModificationType.enm.MOD_DAMAGE_ADD_PERC, mod_value)
+	buffed_tower.modify_property(ModificationType.enm.MOD_ATTACKSPEED, mod_value / 2.0)
 
 
 # NOTE: steam_buff_onAttack() in original script
@@ -115,8 +116,8 @@ func steam_bt_periodic(event: Event):
 	var mod_value_delta: float = new_mod_value - current_mod_value
 	buff.user_real = new_mod_value
 	buff.set_displayed_stacks(power_level)
-	buffed_tower.modify_property(Modification.Type.MOD_DAMAGE_ADD_PERC, mod_value_delta)
-	buffed_tower.modify_property(Modification.Type.MOD_ATTACKSPEED, mod_value_delta / 2.0)
+	buffed_tower.modify_property(ModificationType.enm.MOD_DAMAGE_ADD_PERC, mod_value_delta)
+	buffed_tower.modify_property(ModificationType.enm.MOD_ATTACKSPEED, mod_value_delta / 2.0)
 
 
 # NOTE: steam_buff_onCleanup() in original script
@@ -126,8 +127,8 @@ func steam_bt_on_cleanup(event: Event):
 	powered_tower_count -= 1
 	
 	var current_mod_value: float = buff.user_real
-	buffed_tower.modify_property(Modification.Type.MOD_DAMAGE_ADD_PERC, -current_mod_value)
-	buffed_tower.modify_property(Modification.Type.MOD_ATTACKSPEED, -current_mod_value / 2.0)
+	buffed_tower.modify_property(ModificationType.enm.MOD_DAMAGE_ADD_PERC, -current_mod_value)
+	buffed_tower.modify_property(ModificationType.enm.MOD_ATTACKSPEED, -current_mod_value / 2.0)
 
 
 func on_autocast_speed_up(_event: Event):
@@ -137,8 +138,8 @@ func on_autocast_speed_up(_event: Event):
 	power_level += 1
 	engine_update_mana_use()
 
-	var floating_text: String = "Power Level: %d" % power_level
-	tower.get_player().display_floating_text(floating_text, tower, Color8(50 + 4 * power_level, 150 - 3 * power_level, 100 - 2 * power_level))
+	var power_level_text: String = tr("UQAM").format({POWER_LEVEL = power_level})
+	tower.get_player().display_floating_text(power_level_text, tower, Color8(50 + 4 * power_level, 150 - 3 * power_level, 100 - 2 * power_level))
 
 
 func on_autocast_speed_down(_event: Event):
@@ -148,5 +149,5 @@ func on_autocast_speed_down(_event: Event):
 	power_level -= 1
 	engine_update_mana_use()
 
-	var floating_text: String = "Power Level: %d" % power_level
-	tower.get_player().display_floating_text(floating_text, tower, Color8(50 + 4 * power_level, 150 - 3 * power_level, 100 - 2 * power_level))
+	var power_level_text: String = tr("UQAM").format({POWER_LEVEL = power_level})
+	tower.get_player().display_floating_text(power_level_text, tower, Color8(50 + 4 * power_level, 150 - 3 * power_level, 100 - 2 * power_level))
